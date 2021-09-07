@@ -7,12 +7,18 @@ pub mod contracts {
     #[state]
     pub struct Architect {
         pub owner: Pubkey,
+        pub builders : u8,
+        pub validators : u8,
+        pub reward_token : Pubkey
     }
     impl Architect{
-        pub fn new(ctx : Context<InitArchitect>)-> Result<Self,ProgramError> {
+        pub fn new(ctx : Context<InitArchitect>,builders : u8,validators : u8)-> Result<Self,ProgramError> {
             Ok(
                 Architect{
                     owner : *ctx.accounts.architect.key,
+                    builders,
+                    validators,
+                    reward_token : ctx.accounts.reward.key()
                 }
             )
         }
