@@ -33,7 +33,6 @@ pub mod contracts {
 pub struct InitArchitect<'info> {
     architect: AccountInfo<'info>,
     reward: CpiAccount<'info, Mint>,
-    staking_program: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
