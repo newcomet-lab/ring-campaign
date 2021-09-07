@@ -1,8 +1,22 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token::{self as spl_token, Mint, TokenAccount, Transfer};
 
 #[program]
 pub mod contracts {
     use super::*;
+    #[state]
+    pub struct Architect {
+        pub owner: Pubkey,
+    }
+    impl Architect{
+        pub fn new(ctx : Context<InitArchitect>)-> Result<Self,ProgramError> {
+            Ok(
+                Architect{
+                    owner : *ctx.accounts.architect.key,
+                }
+            )
+        }
+    }
     pub fn initialize(ctx: Context<InitOntology>,utterance :String,description :String) -> ProgramResult {
 
         Ok(())
@@ -13,6 +27,13 @@ pub mod contracts {
     pub fn validator(ctx: Context<OnValidator>) -> ProgramResult {
         Ok(())
     }
+}
+
+#[derive(Accounts)]
+pub struct InitArchitect<'info> {
+    architect: AccountInfo<'info>,
+    reward: CpiAccount<'info, Mint>,
+    staking_program: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
