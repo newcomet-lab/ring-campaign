@@ -23,7 +23,7 @@ pub mod contracts {
             )
         }
     }
-    pub fn initialize(ctx: Context<InitOntology>,utterance :String,description :String) -> ProgramResult {
+    pub fn initialize(ctx: Context<InitOntology>) -> ProgramResult {
 
         Ok(())
     }
@@ -44,7 +44,7 @@ pub struct InitArchitect<'info> {
 #[derive(Accounts)]
 pub struct InitOntology<'info> {
     #[account(init, payer = user)]
-    pub my_ontology: ProgramAccount<'info, Ontology>,
+    pub myOntology: ProgramAccount<'info, Ontology>,
     pub user: AccountInfo<'info>,
     rent: Sysvar<'info, Rent>,
     clock: Sysvar<'info, Clock>,
@@ -59,7 +59,7 @@ pub struct Ontology {
     pub builders : [Pubkey;5],
     pub validators : [Pubkey;3],
     pub created : u64,
-    pub subject_ref: usize,
+    pub subject_ref: u64,
 }
 
 impl Default for Ontology {

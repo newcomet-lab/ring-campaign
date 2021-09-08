@@ -13,7 +13,14 @@ const program = new anchor.Program(idl, programId, provider);
 
 describe('contracts', () => {
   it('Is initialized!', async () => {
-    const tx = await program.rpc.initialize();
+    let user = anchor.web3.Keypair.generate();
+    const tx = await program.rpc.initialize({accounts: {
+        myOntology: provider.wallet.publicKey,
+        user : provider.wallet.publicKey,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
+    }});
     console.log("\tYour transaction signature:\n\t", tx);
     assert.ok(true);
   }).timeout(7000);;
