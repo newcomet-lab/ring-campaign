@@ -1,33 +1,32 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self as spl_token, Mint, TokenAccount, Transfer};
+use anchor_spl::token::{self as spl_token, Mint,MintTo,Burn, TokenAccount, Transfer};
+use anchor_lang::solana_program;
+use anchor_lang::solana_program::account_info::Account;
+use anchor_lang::solana_program::instruction::Instruction;
+use anchor_lang::solana_program::program;
+use anchor_lang::solana_program::program_option::COption;
+use anchor_lang::solana_program::pubkey::{
+    ParsePubkeyError, Pubkey, PubkeyError, MAX_SEEDS, MAX_SEED_LEN, PUBKEY_BYTES,
+};
+//use anchor_spl::token::ID;
+use anchor_lang::Loader;
+use anchor_lang::ZeroCopy;
+
+declare_id!("GWzBR7znXxEVDkDVgQQu5Vpzu3a5G4e5kPXaE9MvebY2");
 
 #[program]
 pub mod contracts {
     use super::*;
-    #[state]
-    pub struct Architect {
-        pub owner: Pubkey,
-        pub builders : u8,
-        pub validators : u8,
-        pub reward_token : Pubkey
-    }
-    impl Architect{
-        pub fn new(ctx : Context<InitArchitect>,builders : u8,validators : u8)-> Result<Self,ProgramError> {
-            Ok(
-                Architect{
-                    owner : *ctx.accounts.architect.key,
-                    builders,
-                    validators,
-                    reward_token : ctx.accounts.reward.key()
-                }
-            )
-        }
-    }
-    pub fn initialize(ctx: Context<InitOntology>) -> ProgramResult {
 
+    pub fn initialize(ctx: Context<InitOntology>,stake_amount : u64,stake_period :u64,campaign_ref :String) -> ProgramResult {
+        let ontology = &mut ctx.accounts.ontology.load_init()?;
+        ontology.architect = *ctx.accounts.architect.key ;
+        ontology.campaign_ref = campaign_ref.parse().unwrap();
+        ontology.stake_amount = stake_amount;
+        ontology.stake_period = stake_period;
         Ok(())
     }
-    pub fn builder(ctx: Context<OnBuilder>) -> ProgramResult {
+    pub fn builder(ctx: Context<OnBuilder>,campaign_ref:String) -> ProgramResult {
         Ok(())
     }
     pub fn validator(ctx: Context<OnValidator>) -> ProgramResult {
@@ -35,53 +34,89 @@ pub mod contracts {
     }
 }
 
-#[derive(Accounts)]
-pub struct InitArchitect<'info> {
-    architect: AccountInfo<'info>,
-    reward: CpiAccount<'info, Mint>,
+#[error]
+pub enum ErrorCode {
+    #[msg("Vesting end must be greater than the current unix timestamp.")]
+    InvalidTimestamp,
+    #[msg("The number of vesting periods must be greater than zero.")]
+    InvalidPeriod,
+    #[msg("The vesting deposit amount must be greater than zero.")]
+    InvalidDepositAmount,
+    #[msg("The Whitelist entry is not a valid program address.")]
+    InvalidProgramAddress,
+    #[msg("Invalid vault owner.")]
+    InvalidVaultOwner,
+    #[msg("Vault amount must be zero.")]
+    InvalidVaultAmount,
+    #[msg("Insufficient withdrawal balance.")]
+    InsufficientWithdrawalBalance,
+    #[msg("You do not have sufficient permissions to perform this action.")]
+    Unauthorized,
 }
 
 #[derive(Accounts)]
+pub struct InitArchitect<'info> {
+    authority: AccountInfo<'info>,
+    sns: CpiAccount<'info, Mint>,
+}
+#[derive(Accounts)]
+pub struct Auth<'info> {
+    #[account(signer)]
+    authority: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(campaign_ref: String, bump: u8)]
 pub struct InitOntology<'info> {
-    #[account(init, payer = user)]
-    pub myOntology: ProgramAccount<'info, Ontology>,
-    pub user: AccountInfo<'info>,
-    rent: Sysvar<'info, Rent>,
-    clock: Sysvar<'info, Clock>,
+    #[account(signer)]
+    pub architect: AccountInfo<'info>,
+    #[account(zero)]
+    pub ontology: Loader<'info, Ontology>,
+    pub rent: Sysvar<'info, Rent>,
     pub system_program: AccountInfo<'info>,
 }
 
-#[account]
+
+
+#[account(zero_copy)]
+#[derive(Default)]
 pub struct Ontology {
     pub architect : Pubkey,
-    pub utterance: String,
-    pub description: String,
-    pub builders : [Pubkey;5],
-    pub validators : [Pubkey;3],
-    pub created : u64,
-    pub subject_ref: u64,
+    pub stake_amount : u64,
+    pub stake_period : u64,
+    pub validator : [Pubkey;3],
+    pub builder : [Pubkey;5],
+    pub token_vault : Pubkey,
+    pub pending_reward : u64,
+    pub ontology_status : bool,
+    pub campaign_ref: u64,
+    pub created_ts : u64
 }
 
-impl Default for Ontology {
-    fn default() -> Self {
-        Ontology{
-            architect : Pubkey::default() ,
-            utterance : "".into(),
-            description : "".into(),
-            builders : [Pubkey::default();5],
-            validators : [Pubkey::default();3],
-            created : 0,
-            subject_ref: 0
-        }
-    }
-}
-
+#[instruction(campaign_ref: String, bump: u8)]
 #[derive(Accounts)]
-pub struct OnValidator{
-
+pub struct OnBuilder<'info>{
+    #[account(
+    mut,
+    seeds = [b"my-state", campaign_ref.as_bytes()],
+    bump = bump,
+    )]
+    pub ontology: Loader<'info, Ontology>,
+    #[account(signer)]
+    pub builder: AccountInfo<'info>
 }
 
+#[instruction(campaign_ref: String, bump: u8)]
 #[derive(Accounts)]
-pub struct OnBuilder{
-
+pub struct OnValidator<'info>{
+    #[account(
+    mut,
+    seeds = [b"my-state", campaign_ref.as_bytes()],
+    bump = bump,
+    )]
+    pub ontology_account: Loader<'info, Ontology>,
+    #[account(signer)]
+    pub validator: AccountInfo<'info>
 }
+
+
