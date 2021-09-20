@@ -34,31 +34,27 @@ pub mod contracts {
     }
 }
 
-#[error]
-pub enum ErrorCode {
-    #[msg("Vesting end must be greater than the current unix timestamp.")]
-    InvalidTimestamp,
-    #[msg("The number of vesting periods must be greater than zero.")]
-    InvalidPeriod,
-    #[msg("The vesting deposit amount must be greater than zero.")]
-    InvalidDepositAmount,
-    #[msg("The Whitelist entry is not a valid program address.")]
-    InvalidProgramAddress,
-    #[msg("Invalid vault owner.")]
-    InvalidVaultOwner,
-    #[msg("Vault amount must be zero.")]
-    InvalidVaultAmount,
-    #[msg("Insufficient withdrawal balance.")]
-    InsufficientWithdrawalBalance,
-    #[msg("You do not have sufficient permissions to perform this action.")]
-    Unauthorized,
+#[derive(Accounts)]
+pub struct initPool<'info> {
+    #[account(zero)]
+    pub pool_account: Loader<'info, PoolAccount>,
+    pub pool_authority: AccountInfo<'info>,
+    #[account(mut, constraint = sns.owner == pool_authority.key)]
+    pub sns: AccountInfo<'info>,
+}
+#[account(zero_copy)]
+pub struct PoolAccount {
+    pub sns_mint: Pubkey,
+    pub distribution_authority: Pubkey
 }
 
 #[derive(Accounts)]
-pub struct InitArchitect<'info> {
-    authority: AccountInfo<'info>,
-    sns: CpiAccount<'info, Mint>,
+pub struct updatePool<'info> {
+    #[account(signer)]
+    authority: AccountInfo<'info>
 }
+
+
 #[derive(Accounts)]
 pub struct Auth<'info> {
     #[account(signer)]
@@ -76,7 +72,20 @@ pub struct InitOntology<'info> {
     pub system_program: AccountInfo<'info>,
 }
 
+#[derive(Accounts)]
+pub struct InitCampaign<'info>  {
+    #[account(zero)]
+    pub campaign: Loader<'info, Campaign>,
+}
 
+#[account(zero_copy)]
+pub struct Campaign {
+    refID : u64,
+    head: u64,
+    tail: u64,
+    title: [u8; 280],
+    utterances: [Utterance; 33607],
+}
 
 #[account(zero_copy)]
 #[derive(Default)]
@@ -93,6 +102,14 @@ pub struct Ontology {
     pub created_ts : u64
 }
 
+impl Campaign {
+    fn build(&mut self, msg: Utterance) {
+
+    }
+    fn index_of(counter: u64) -> usize {
+        std::convert::TryInto::try_into(counter % 33607).unwrap()
+    }
+}
 #[instruction(campaign_ref: String, bump: u8)]
 #[derive(Accounts)]
 pub struct OnBuilder<'info>{
@@ -104,6 +121,11 @@ pub struct OnBuilder<'info>{
     pub ontology: Loader<'info, Ontology>,
     #[account(signer)]
     pub builder: AccountInfo<'info>
+}
+#[zero_copy]
+pub struct Utterance {
+    pub from: Pubkey,
+    pub data: [u8; 280],
 }
 
 #[instruction(campaign_ref: String, bump: u8)]
