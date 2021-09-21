@@ -59,12 +59,15 @@ pub mod contracts {
         campaign.validation_quorum = validation_quorum;
         Ok(())
     }
-    pub fn initialize(ctx: Context<InitOntology>,stake_amount : u64,stake_period :u64,campaign_ref :String) -> ProgramResult {
+    pub fn architect_init(ctx: Context<InitOntology>,stake_amount : u64,stake_period :u64) -> ProgramResult {
         let ontology = &mut ctx.accounts.ontology.load_init()?;
+        let campaign = &mut ctx.accounts.campaign.load_mut()?;
+        let pool = &mut ctx.accounts.pool.load_mut()?;
         ontology.architect = *ctx.accounts.architect.key ;
-        ontology.campaign_ref = campaign_ref.parse().unwrap();
+        ontology.campaign_ref = campaign.refID;
         ontology.stake_amount = stake_amount;
         ontology.stake_period = stake_period;
+
         Ok(())
     }
     pub fn builder(ctx: Context<OnBuilder>,campaign_ref:String) -> ProgramResult {
@@ -126,7 +129,8 @@ pub struct Campaign {
     refID : u64,
     title: [u8; 280],
     description: [u8; 280],
-    utterances: [Utterance; 33607],
+    utterances: [Utterance; 256],
+    architects: [Pubkey; 64],
     minimum_builder : u64,
     minimum_validation :u64,
     time_limit : u64,
@@ -138,9 +142,12 @@ pub struct Campaign {
 }
 #[zero_copy]
 pub struct Utterance {
-    pub from: Pubkey,
+    pub builder: Pubkey,
+    pub validator :Pubkey,
     pub data: [u8; 280],
+    pub validated :bool
 }
+
 #[zero_copy]
 pub struct Validate {
     pub from: Pubkey,
@@ -160,6 +167,8 @@ pub struct InitOntology<'info> {
     pub architect: AccountInfo<'info>,
     #[account(zero)]
     pub ontology: Loader<'info, Ontology>,
+    pub campaign: Loader<'info, Campaign>,
+    pub pool: Loader<'info, PoolAccount>,
     pub rent: Sysvar<'info, Rent>,
     pub system_program: AccountInfo<'info>,
 }
@@ -172,7 +181,6 @@ pub struct Ontology {
     pub stake_period : u64,
     pub validator : [Pubkey;3],
     pub builder : [Pubkey;5],
-    pub token_vault : Pubkey,
     pub pending_reward : u64,
     pub ontology_status : bool,
     pub campaign_ref: u64,
