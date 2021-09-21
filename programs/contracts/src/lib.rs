@@ -28,6 +28,37 @@ pub mod contracts {
         pool.distribution_authority = ctx.accounts.new_authority.key();
         Ok(())
     }
+    pub fn create_campaign(ctx: Context<CreateCampaign>,
+                           off_chain_reference: u64,
+                           period : u64,
+                           min_builder : u64,
+                           min_validator : u64,
+                           title : String,
+                           description : String,
+                           reward_per_utterance : u64,
+                           validation_quorum : u8
+    ) -> ProgramResult {
+        let pool = &mut ctx.accounts.pool.load_mut()?;
+        let campaign = &mut ctx.accounts.campaign.load_init()?;
+        campaign.reward_token = pool.sns_mint;
+        campaign.refID = off_chain_reference;
+        campaign.fixed_reward_apy =pool.reward_apy ;
+        campaign.minimum_builder = min_builder;
+        campaign.minimum_validation = min_validator;
+        campaign.time_limit = period ;
+        let given_title = title.as_bytes();
+        let mut title = [0u8; 280];
+        title[..given_title.len()].copy_from_slice(given_title);
+        campaign.title = title ;
+
+        let given_description = description.as_bytes();
+        let mut description = [0u8; 280];
+        description[..given_description.len()].copy_from_slice(given_description);
+        campaign.description = description ;
+        campaign.reward_per_utterance = reward_per_utterance;
+        campaign.validation_quorum = validation_quorum;
+        Ok(())
+    }
     pub fn initialize(ctx: Context<InitOntology>,stake_amount : u64,stake_period :u64,campaign_ref :String) -> ProgramResult {
         let ontology = &mut ctx.accounts.ontology.load_init()?;
         ontology.architect = *ctx.accounts.architect.key ;
@@ -80,12 +111,15 @@ pub struct Auth<'info> {
 }
 /// Fully Campaign Initialization
 #[derive(Accounts)]
-pub struct InitCampaign<'info>  {
+pub struct CreateCampaign<'info>  {
     #[account(zero)]
     pub campaign: Loader<'info, Campaign>,
     #[account(zero)]
     pub architect: Loader<'info, Ontology>,
+    #[account(mut)]
+    pub pool: Loader<'info, PoolAccount>,
 }
+
 /// Campaign Structure
 #[account(zero_copy)]
 pub struct Campaign {
@@ -99,7 +133,8 @@ pub struct Campaign {
     reward_per_utterance : u64,
     mining_reward : u64,
     validation_quorum : u8,
-    fixed_reward_apy : u64
+    fixed_reward_apy : u8,
+    reward_token : Pubkey
 }
 #[zero_copy]
 pub struct Utterance {
@@ -115,6 +150,7 @@ pub struct Validate {
 impl Campaign {
     fn build(&mut self, msg: Utterance) {}
     fn validate(&mut self, builder: Pubkey) {}
+    fn distribute_reward(&mut self, builder: Pubkey) {}
 }
 /// Account to be initialized by architect
 #[derive(Accounts)]
