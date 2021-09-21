@@ -67,7 +67,8 @@ pub mod contracts {
         ontology.campaign_ref = campaign.refID;
         ontology.stake_amount = stake_amount;
         ontology.stake_period = stake_period;
-
+        ontology.builder = [Pubkey::default();5];
+        ontology.validator = [Pubkey::default();3];
         Ok(())
     }
     pub fn builder(ctx: Context<OnBuilder>,campaign_ref:String) -> ProgramResult {
