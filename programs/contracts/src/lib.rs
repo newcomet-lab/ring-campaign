@@ -69,6 +69,7 @@ pub mod contracts {
         ontology.stake_period = stake_period;
         ontology.builder = [Pubkey::default();5];
         ontology.validator = [Pubkey::default();3];
+        campaign.add_architect(ontology.clone());
         Ok(())
     }
     pub fn builder(ctx: Context<OnBuilder>,campaign_ref:String) -> ProgramResult {
@@ -131,7 +132,7 @@ pub struct Campaign {
     title: [u8; 280],
     description: [u8; 280],
     utterances: [Utterance; 256],
-    architects: [Pubkey; 64],
+    ontologies: [Ontology; 64],
     minimum_builder : u64,
     minimum_validation :u64,
     time_limit : u64,
@@ -156,6 +157,10 @@ pub struct Validate {
 }
 
 impl Campaign {
+    fn add_architect(&mut self,ontology :  Ontology ) -> ProgramResult {
+        self.ontologies[self.ontologies.len()] = ontology;
+        Ok(())
+    }
     fn build(&mut self, msg: Utterance) {}
     fn validate(&mut self, builder: Pubkey) {}
     fn distribute_reward(&mut self, builder: Pubkey) {}
