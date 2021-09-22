@@ -52,7 +52,7 @@ pub mod contracts {
                            reward_per_utterance : u64,
                            validation_quorum : u8
     ) -> ProgramResult {
-        let pool = &mut ctx.accounts.pool.load_mut()?;
+        let pool = &mut ctx.accounts.pool_account.load_mut()?;
         let campaign = &mut ctx.accounts.campaign.load_init()?;
         campaign.reward_token = pool.sns_mint;
         campaign.refID = off_chain_reference;
@@ -159,12 +159,10 @@ pub struct Auth<'info> {
 /// Fully Campaign Initialization
 #[derive(Accounts)]
 pub struct CreateCampaign<'info>  {
-    #[account(zero)]
+    #[account(zero,signer)]
     pub campaign: Loader<'info, Campaign>,
-    #[account(zero)]
-    pub architect: Loader<'info, Ontology>,
-    #[account(mut)]
-    pub pool: Loader<'info, PoolAccount>,
+    #[account(mut,signer)]
+    pub pool_account: Loader<'info, PoolAccount>,
 }
 
 /// Campaign Structure
