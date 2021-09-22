@@ -14,36 +14,58 @@ const programId = new anchor.web3.PublicKey("GWzBR7znXxEVDkDVgQQu5Vpzu3a5G4e5kPX
 const provider = anchor.getProvider();
 const program = new anchor.Program(idl, programId, provider);
 const SNS = new anchor.web3.PublicKey("51LAPRbcEvheteGQjSgAFV6rrEvjL4P2igvzPH8bu88");
-let sns = null;
+
 
 const ks_hadi = fs.readFileSync("/home/hadi/.config/solana/id.json", {encoding: 'utf8'});
 const kb_hadi = Buffer.from(JSON.parse(ks_hadi));
 let hadi = new anchor.web3.Account(kb_hadi);
-console.log("\tLoad user hadi: ", hadi.publicKey.toBase58());
+
+const user = anchor.web3.Keypair.generate();
+const admin = anchor.web3.Keypair.generate();
+const architect = anchor.web3.Keypair.generate();
+const builder = anchor.web3.Keypair.generate();
+const validator = anchor.web3.Keypair.generate();
 
 describe('contracts', () => {
-    const user = anchor.web3.Keypair.generate();
-    it("Creates an associated account", async () => {
-        const amount = new anchor.BN(10) ;
-        const period = new anchor.BN(7) ;
-        const campaign_ref = "zx-1" ;
-        const  transaction =  await program.rpc.initialize(amount,period,campaign_ref,{
-            accounts: {
-                ontology: user.publicKey,
-                architect: hadi.publicKey,
-                rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-                systemProgram: anchor.web3.SystemProgram.programId,
-            },
-            signers: [user, hadi],
+    it("log users", async () => {
+        console.log("\thadi: ", hadi.publicKey.toBase58());
+        console.log("\tadmin : ",admin.publicKey.toBase58());
+        console.log("\tarchitect : ",architect.publicKey.toBase58());
+        console.log("\tbuilder : ",builder.publicKey.toBase58());
+        console.log("\tvalidator : ",validator.publicKey.toBase58());
+        assert.ok(true);
+    });
+    it("Creates Mining Pool", async () => {
+        const architect_stake = new anchor.BN(20) ;
+        const builder_stake = new anchor.BN(20) ;
+        const validator_stake = new anchor.BN(20) ;
+        const reward_apy = 10 ;
+        const pool_cap = new anchor.BN(250000000) ;
+        const penalty = new anchor.BN(2) ;
+        const  transaction =  await program.rpc.initPool(
+            architect_stake,builder_stake,validator_stake,
+            reward_apy,pool_cap,penalty,
+            {
+                accounts: {
+                    poolAccount: admin.publicKey,
+                    poolAuthority: user.publicKey,
+                    sns : SNS
+                },
+            signers: [admin],
             instructions: [
-                await program.account.ontology.createInstruction(user),
+                await program.account.poolAccount.createInstruction(admin),
             ],
         });
-        const ontology = await program.account.ontology.fetch(user.publicKey);
-        assert.ok(
-            JSON.stringify(ontology.architect.toBuffer()) ===
-            JSON.stringify(program.provider.wallet.publicKey.toBuffer())
-        );
-
+        const pool = await program.account.poolAccount.fetch(admin.publicKey);
+        assert.ok(pool.snsMint.equals(SNS));
+        assert.ok(pool.distributionAuthority.equals(user.publicKey));
+        assert.ok(pool.architectStake.eq(architect_stake));
+        assert.ok(pool.builderStake.eq(builder_stake));
+        assert.ok(pool.validatorStake.eq(validator_stake));
+        assert.ok(pool.poolCap.eq(pool_cap));
+        assert.ok(pool.penalty.eq(penalty));
+        assert.ok(pool.rewardApy === reward_apy);
     }).timeout(10000);
+
 });
+

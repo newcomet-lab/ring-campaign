@@ -17,10 +17,23 @@ declare_id!("GWzBR7znXxEVDkDVgQQu5Vpzu3a5G4e5kPXaE9MvebY2");
 #[program]
 pub mod contracts {
     use super::*;
-    pub fn init_pool(ctx: Context<initPool>) -> ProgramResult {
+    pub fn init_pool(ctx: Context<initPool>,
+                     architect_stake:u64,
+                     builder_stake:u64,
+                     validator_stake:u64,
+                     reward_apy:u8,
+                     pool_cap:u64,
+                     penalty:u64
+    ) -> ProgramResult {
         let pool = &mut ctx.accounts.pool_account.load_init()?;
         pool.sns_mint = *ctx.accounts.sns.key;
         pool.distribution_authority =*ctx.accounts.pool_authority.key;
+        pool.reward_apy = reward_apy;
+        pool.penalty = penalty;
+        pool.pool_cap = pool_cap;
+        pool.architect_stake = architect_stake;
+        pool.builder_stake = builder_stake;
+        pool.validator_stake = validator_stake;
         Ok(())
     }
     pub fn update_pool(ctx: Context<updatePool>) -> ProgramResult {
@@ -60,7 +73,7 @@ pub mod contracts {
         Ok(())
     }
     pub fn architect_init(ctx: Context<InitOntology>,stake_amount : u64,stake_period :u64) -> ProgramResult {
-        let ontology = &mut ctx.accounts.ontology.load_init()?;
+        let ontology = &mut ctx.accounts.ontology_account.load_init()?;
         let campaign = &mut ctx.accounts.campaign.load_mut()?;
         let pool = &mut ctx.accounts.pool.load_mut()?;
         ontology.architect = *ctx.accounts.architect.key ;
@@ -79,13 +92,41 @@ pub mod contracts {
         Ok(())
     }
 }
+
+#[account(zero_copy)]
+pub struct Ontology {
+    pub architect : Pubkey,
+    pub stake_amount : u64,
+    pub stake_period : u64,
+    pub validator : [Pubkey;3],
+    pub builder : [Pubkey;5],
+    pub pending_reward : u64,
+    pub ontology_status : bool,
+    pub campaign_ref: u64,
+    pub created_ts : u64
+}
+
+/// Account to be initialized by architect
+#[derive(Accounts)]
+#[instruction(campaign_ref: String, bump: u8)]
+pub struct InitOntology<'info> {
+    #[account(signer)]
+    pub architect: AccountInfo<'info>,
+    #[account(zero)]
+    pub ontology_account: Loader<'info, Ontology>,
+    pub campaign: Loader<'info, Campaign>,
+    pub pool: Loader<'info, PoolAccount>,
+    pub rent: Sysvar<'info, Rent>,
+    pub system_program: AccountInfo<'info>,
+}
+
+
 /// Pool Initialization accounts and set authority
 #[derive(Accounts)]
 pub struct initPool<'info> {
     #[account(zero)]
     pub pool_account: Loader<'info, PoolAccount>,
     pub pool_authority: AccountInfo<'info>,
-    #[account(mut, constraint = sns.owner == pool_authority.key)]
     pub sns: AccountInfo<'info>,
 }
 /// Account to update pool authority
@@ -132,7 +173,7 @@ pub struct Campaign {
     title: [u8; 280],
     description: [u8; 280],
     utterances: [Utterance; 256],
-    ontologies: [Ontology; 64],
+    ontologies: [Pubkey; 64],
     minimum_builder : u64,
     minimum_validation :u64,
     time_limit : u64,
@@ -158,40 +199,14 @@ pub struct Validate {
 
 impl Campaign {
     fn add_architect(&mut self,ontology :  Ontology ) -> ProgramResult {
-        self.ontologies[self.ontologies.len()] = ontology;
+       // self.ontologies[self.ontologies.len()] = ontology;
         Ok(())
     }
     fn build(&mut self, msg: Utterance) {}
     fn validate(&mut self, builder: Pubkey) {}
     fn distribute_reward(&mut self, builder: Pubkey) {}
 }
-/// Account to be initialized by architect
-#[derive(Accounts)]
-#[instruction(campaign_ref: String, bump: u8)]
-pub struct InitOntology<'info> {
-    #[account(signer)]
-    pub architect: AccountInfo<'info>,
-    #[account(zero)]
-    pub ontology: Loader<'info, Ontology>,
-    pub campaign: Loader<'info, Campaign>,
-    pub pool: Loader<'info, PoolAccount>,
-    pub rent: Sysvar<'info, Rent>,
-    pub system_program: AccountInfo<'info>,
-}
 
-#[account(zero_copy)]
-#[derive(Default)]
-pub struct Ontology {
-    pub architect : Pubkey,
-    pub stake_amount : u64,
-    pub stake_period : u64,
-    pub validator : [Pubkey;3],
-    pub builder : [Pubkey;5],
-    pub pending_reward : u64,
-    pub ontology_status : bool,
-    pub campaign_ref: u64,
-    pub created_ts : u64
-}
 
 
 #[instruction(campaign_ref: String, bump: u8)]
@@ -202,7 +217,7 @@ pub struct OnBuilder<'info>{
     seeds = [b"my-state", campaign_ref.as_bytes()],
     bump = bump,
     )]
-    pub ontology: Loader<'info, Ontology>,
+    pub ontology_account: Loader<'info, Ontology>,
     #[account(signer)]
     pub builder: AccountInfo<'info>
 }
