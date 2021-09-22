@@ -36,9 +36,10 @@ pub mod contracts {
         pool.validator_stake = validator_stake;
         Ok(())
     }
-    pub fn update_pool(ctx: Context<updatePool>) -> ProgramResult {
+    pub fn update_pool(ctx: Context<updatePool>,apy : u8) -> ProgramResult {
         let pool = &mut ctx.accounts.pool_account.load_mut()?;
         pool.distribution_authority = ctx.accounts.new_authority.key();
+        pool.reward_apy = apy ;
         Ok(())
     }
     pub fn create_campaign(ctx: Context<CreateCampaign>,

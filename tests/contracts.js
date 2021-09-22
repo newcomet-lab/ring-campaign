@@ -2,8 +2,7 @@ const anchor = require("@project-serum/anchor");
 const assert = require("assert");
 const fs = require("fs");
 const {PublicKey} = require("@solana/web3.js");
-const { getMint} = require("./helper");
-
+const {getMint} = require("./helper");
 
 anchor.setProvider(anchor.Provider.local("https://api.devnet.solana.com"));
 const idl = JSON.parse(
@@ -66,6 +65,20 @@ describe('contracts', () => {
         assert.ok(pool.penalty.eq(penalty));
         assert.ok(pool.rewardApy === reward_apy);
     }).timeout(10000);
-
+    it("Update Mining Pool APY", async () => {
+        const previous_pool = await program.account.poolAccount.fetch(admin.publicKey);
+        const newApy = 13 ;
+        const  transaction =  await program.rpc.updatePool(newApy,
+            {
+                accounts: {
+                    poolAccount: admin.publicKey,
+                    newAuthority: hadi.publicKey
+                },
+                signers: [admin]
+            });
+        const pool = await program.account.poolAccount.fetch(admin.publicKey);
+        assert.ok(pool.rewardApy === newApy);
+        assert.ok(previous_pool.rewardApy !== newApy);
+    }).timeout(20000);
 });
 
