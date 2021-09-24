@@ -1,3 +1,4 @@
+#![feature(trivial_bounds)]
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self as spl_token, Mint,MintTo,Burn, TokenAccount, Transfer};
 use anchor_lang::solana_program;
@@ -11,6 +12,8 @@ use anchor_lang::solana_program::pubkey::{
 //use anchor_spl::token::ID;
 use anchor_lang::Loader;
 use anchor_lang::ZeroCopy;
+use anchor_lang::prelude::borsh::{BorshSerialize,BorshDeserialize};
+use std::io::Write;
 
 declare_id!("GWzBR7znXxEVDkDVgQQu5Vpzu3a5G4e5kPXaE9MvebY2");
 
@@ -72,6 +75,11 @@ pub mod contracts {
         campaign.description = description ;
         campaign.reward_per_utterance = reward_per_utterance;
         campaign.validation_quorum = validation_quorum;
+
+        emit!( SynEvent{
+            kind : Events::CmapaginCreate,
+            user : Pubkey::default()
+        });
         Ok(())
     }
     pub fn architect_init(ctx: Context<InitOntology>,stake_amount : u64,stake_period :u64) -> ProgramResult {
@@ -149,22 +157,21 @@ pub struct PoolAccount {
     pub pool_cap : u64,
     pub penalty : u64
 }
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 
-impl Default for PoolAccount {
-    fn default() -> Self {
-        PoolAccount {
-            admin:Pubkey::default(),
-            sns_mint: Pubkey::default(),
-            distribution_authority: Pubkey::default(),
-            architect_stake: 0,
-            builder_stake: 0,
-            validator_stake: 0,
-            reward_apy: 0,
-            pool_cap: 0,
-            penalty: 0
-        }
-    }
+pub enum Events {
+    PoolUpdate,
+    CmapaginCreate,
+    OntologyCreate
 }
+
+#[event]
+pub struct SynEvent {
+    pub kind: Events,
+    #[index]
+    pub user: Pubkey,
+}
+
 /// Structure for access list checking
 #[derive(Accounts)]
 pub struct Auth<'info> {
