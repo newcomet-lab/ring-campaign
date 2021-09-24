@@ -42,6 +42,7 @@ pub mod contracts {
         pool.reward_apy = apy ;
         Ok(())
     }
+
     pub fn create_campaign(ctx: Context<CreateCampaign>,
                            off_chain_reference: u64,
                            period : u64,
@@ -52,7 +53,7 @@ pub mod contracts {
                            reward_per_utterance : u64,
                            validation_quorum : u8
     ) -> ProgramResult {
-        let pool = &mut ctx.accounts.pool_account.load_mut()?;
+        let pool = &mut ctx.accounts.pool.load_mut()?;
         let campaign = &mut ctx.accounts.campaign.load_init()?;
         campaign.reward_token = pool.sns_mint;
         campaign.refID = off_chain_reference;
@@ -140,6 +141,7 @@ pub struct updatePool<'info> {
 /// Structure of pool initialization
 #[account(zero_copy)]
 pub struct PoolAccount {
+    pub admin: Pubkey,
     pub sns_mint: Pubkey,
     pub distribution_authority: Pubkey,
     pub architect_stake:u64,
@@ -150,6 +152,21 @@ pub struct PoolAccount {
     pub penalty : u64
 }
 
+impl Default for PoolAccount {
+    fn default() -> Self {
+        PoolAccount {
+            admin:Pubkey::default(),
+            sns_mint: Pubkey::default(),
+            distribution_authority: Pubkey::default(),
+            architect_stake: 0,
+            builder_stake: 0,
+            validator_stake: 0,
+            reward_apy: 0,
+            pool_cap: 0,
+            penalty: 0
+        }
+    }
+}
 /// Structure for access list checking
 #[derive(Accounts)]
 pub struct Auth<'info> {
@@ -161,8 +178,8 @@ pub struct Auth<'info> {
 pub struct CreateCampaign<'info>  {
     #[account(zero,signer)]
     pub campaign: Loader<'info, Campaign>,
-    #[account(mut,signer)]
-    pub pool_account: Loader<'info, PoolAccount>,
+    #[account(mut)]
+    pub pool: Loader<'info, PoolAccount>,
 }
 
 /// Campaign Structure
@@ -171,8 +188,6 @@ pub struct Campaign {
     refID : u64,
     title: [u8; 280],
     description: [u8; 280],
-    utterances: [Utterance; 256],
-    ontologies: [Pubkey; 64],
     minimum_builder : u64,
     minimum_validation :u64,
     time_limit : u64,

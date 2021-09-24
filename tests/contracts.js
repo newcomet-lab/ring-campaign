@@ -27,6 +27,7 @@ const builder = anchor.web3.Keypair.generate();
 const validator = anchor.web3.Keypair.generate();
 
 describe('contracts', () => {
+
     it("log users", async () => {
         console.log("\thadi: ", hadi.publicKey.toBase58());
         console.log("\tadmin : ",admin.publicKey.toBase58());
@@ -43,19 +44,19 @@ describe('contracts', () => {
         const reward_apy = 10 ;
         const pool_cap = new anchor.BN(250000000) ;
         const penalty = new anchor.BN(2) ;
+
         const  transaction =  await program.rpc.initPool(
             architect_stake,builder_stake,validator_stake,
             reward_apy,pool_cap,penalty,
             {
                 accounts: {
-                    poolAccount: admin.publicKey,
+                    poolAccount : admin.publicKey,
                     poolAuthority: user.publicKey,
                     sns : SNS
                 },
             signers: [admin],
-            instructions: [
-                await program.account.poolAccount.createInstruction(admin),
-            ],
+            instructions: [await program.account.poolAccount.createInstruction(admin)],
+
         });
         const pool = await program.account.poolAccount.fetch(admin.publicKey);
         assert.ok(pool.snsMint.equals(SNS));
@@ -73,8 +74,8 @@ describe('contracts', () => {
         const  transaction =  await program.rpc.updatePool(newApy,
             {
                 accounts: {
-                    poolAccount: admin.publicKey,
-                    newAuthority: hadi.publicKey
+                    poolAccount:admin.publicKey,
+                    newAuthority: admin.publicKey
                 },
                 signers: [admin]
             });
@@ -105,17 +106,15 @@ describe('contracts', () => {
             {
                 accounts: {
                     campaign: customer.publicKey,
-                    poolAccount : pool.publicKey
+                    pool :admin.publicKey
                 },
                 instructions: [
                     await program.account.campaign.createInstruction(customer),
                 ],
-                signers: [customer,pool],
+                signers: [customer],
             });
         const campaign = await program.account.campaign.fetch(customer.publicKey);
-        console.log("campaign :",campaign);
-        //assert.ok(campaign.refID.eq(off_chain_reference ));
-        assert.ok(true);
-    }).timeout(20000);
+        assert.ok(campaign.minimumBuilder.eq(min_builder));
+    }).timeout(40000);
 });
 
