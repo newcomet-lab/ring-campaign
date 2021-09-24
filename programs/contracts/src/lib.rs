@@ -157,8 +157,7 @@ pub struct PoolAccount {
     pub pool_cap : u64,
     pub penalty : u64
 }
-#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
-
+#[derive(BorshSerialize, BorshDeserialize)]
 pub enum Events {
     PoolUpdate,
     CmapaginCreate,
@@ -168,7 +167,6 @@ pub enum Events {
 #[event]
 pub struct SynEvent {
     pub kind: Events,
-    #[index]
     pub user: Pubkey,
 }
 
