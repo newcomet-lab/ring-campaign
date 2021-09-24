@@ -115,6 +115,30 @@ describe('contracts', () => {
             });
         const campaign = await program.account.campaign.fetch(customer.publicKey);
         assert.ok(campaign.minimumBuilder.eq(min_builder));
-    }).timeout(40000);
+    }).timeout(20000);
+
+    it("Create Ontology by architect by customer", async () => {
+        const pool = await program.account.poolAccount.fetch(admin.publicKey);
+        const campaign = await program.account.campaign.fetch(customer.publicKey);
+        const stake_amount = new anchor.BN(1000);
+        const stake_period = new anchor.BN(7) ;
+        const  transaction =  await program.rpc.architectInit(
+            stake_amount,
+            stake_period,
+            {
+                accounts: {
+                    ontologyAccount: architect.publicKey,
+                    architect: architect.publicKey,
+                    campaign: customer.publicKey,
+                    pool :admin.publicKey,
+                },
+                instructions: [
+                    await program.account.ontologyAccount.createInstruction(architect),
+                ],
+                signers: [architect],
+            });
+        const ontology = await program.account.ontologyAccount.fetch(architect.publicKey);
+        assert.ok(true);
+    }).timeout(30000);
 });
 

@@ -96,7 +96,7 @@ pub mod contracts {
 }
 
 #[account(zero_copy)]
-pub struct Ontology {
+pub struct OntologyAccount {
     pub architect : Pubkey,
     pub stake_amount : u64,
     pub stake_period : u64,
@@ -110,16 +110,14 @@ pub struct Ontology {
 
 /// Account to be initialized by architect
 #[derive(Accounts)]
-#[instruction(campaign_ref: String, bump: u8)]
 pub struct InitOntology<'info> {
-    #[account(signer)]
-    pub architect: AccountInfo<'info>,
     #[account(zero)]
-    pub ontology_account: Loader<'info, Ontology>,
+    pub ontology_account: Loader<'info, OntologyAccount>,
+    pub architect: AccountInfo<'info>,
+    #[account(mut)]
     pub campaign: Loader<'info, Campaign>,
-    pub pool: Loader<'info, PoolAccount>,
-    pub rent: Sysvar<'info, Rent>,
-    pub system_program: AccountInfo<'info>,
+    #[account(mut)]
+    pub pool: Loader<'info, PoolAccount>
 }
 
 
@@ -212,7 +210,7 @@ pub struct Validate {
 }
 
 impl Campaign {
-    fn add_architect(&mut self,ontology :  Ontology ) -> ProgramResult {
+    fn add_architect(&mut self,ontology :  OntologyAccount ) -> ProgramResult {
        // self.ontologies[self.ontologies.len()] = ontology;
         Ok(())
     }
@@ -231,7 +229,7 @@ pub struct OnBuilder<'info>{
     seeds = [b"my-state", campaign_ref.as_bytes()],
     bump = bump,
     )]
-    pub ontology_account: Loader<'info, Ontology>,
+    pub ontology_account: Loader<'info, OntologyAccount>,
     #[account(signer)]
     pub builder: AccountInfo<'info>
 }
@@ -244,7 +242,7 @@ pub struct OnValidator<'info>{
     seeds = [b"my-state", campaign_ref.as_bytes()],
     bump = bump,
     )]
-    pub ontology_account: Loader<'info, Ontology>,
+    pub ontology_account: Loader<'info, OntologyAccount>,
     #[account(signer)]
     pub validator: AccountInfo<'info>
 }
