@@ -45,7 +45,6 @@ pub mod contracts {
         pool.reward_apy = apy ;
         Ok(())
     }
-
     pub fn create_campaign(ctx: Context<CreateCampaign>,
                            off_chain_reference: u64,
                            period : u64,
@@ -75,7 +74,6 @@ pub mod contracts {
         campaign.description = description ;
         campaign.reward_per_utterance = reward_per_utterance;
         campaign.validation_quorum = validation_quorum;
-
         emit!( SynEvent{
             kind : Events::CmapaginCreate,
             user : Pubkey::default()
