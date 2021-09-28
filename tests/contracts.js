@@ -213,5 +213,26 @@ describe('contracts', () => {
             console.log("\t\tAddress:", campaign.architects[k].toBase58());
         }
     });
+
+    it("Submit Utterance to an ontology", async () => {
+        let utterance = "hello";
+        const pool = await program.account.poolAccount.fetch(admin.publicKey);
+        const campaign = await program.account.campaign.fetch(customer.publicKey);
+        console.log("\t\tAddress:", campaign.architects[0].toBase58());
+
+        const transaction = await program.rpc.utterance(
+            utterance, {
+                accounts: {
+                    builder: builder.publicKey,
+                    ontologyAccount: campaign.architects[0],
+                    campaign: customer.publicKey,
+                    pool : admin.publicKey,
+                },
+            }
+        );
+        const ontology = await program.account.ontologyAccount.fetch(campaign.architects[0]);
+        let utter = new TextDecoder("utf-8").decode(new Uint8Array(ontology.utterances[0].data));
+        assert.ok(utter.startsWith("hello"));
+    }).timeout(90000);
 });
 

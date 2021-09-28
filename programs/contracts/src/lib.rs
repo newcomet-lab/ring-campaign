@@ -93,10 +93,27 @@ pub mod contracts {
         campaign.add_architect(ontology.architect);
         Ok(())
     }
-    pub fn builder(ctx: Context<OnBuilder>,campaign_ref:String) -> ProgramResult {
+    pub fn utterance(ctx: Context<OnBuilder>,msg :String) -> ProgramResult {
+        let ontology = &mut ctx.accounts.ontology_account.load_mut()?;
+        let campaign = &mut ctx.accounts.campaign.load_mut()?;
+        let pool = &mut ctx.accounts.pool.load_mut()?;
+        let given_msg = msg.as_bytes();
+        let mut data = [0u8; 256];
+        data[..given_msg.len()].copy_from_slice(given_msg);
+        let last_id = ontology.add_utterance(Utterance{
+            builder :  ctx.accounts.builder.key(),
+            validator : Pubkey::default(),
+            validated: false,
+            data
+        });
+
         Ok(())
     }
     pub fn validator(ctx: Context<OnValidator>) -> ProgramResult {
+        Ok(())
+    }
+    pub fn checkpy(ctx: Context<Python>) -> ProgramResult {
+        msg!("called me from python");
         Ok(())
     }
 }
@@ -106,6 +123,9 @@ pub struct OntologyAccount {
     pub architect : Pubkey,
     pub stake_amount : u64,
     pub stake_period : u64,
+    pub head: u64,
+    pub tail: u64,
+    pub utterances : [Utterance;8],
     pub validator : [Pubkey;3],
     pub builder : [Pubkey;5],
     pub pending_reward : u64,
@@ -205,7 +225,7 @@ pub struct Campaign {
 pub struct Utterance {
     pub builder: Pubkey,
     pub validator :Pubkey,
-    pub data: [u8; 280],
+    pub data: [u8; 256],
     pub validated :bool
 }
 
@@ -224,39 +244,51 @@ impl Campaign {
         self.head += 1;
     }
     fn index_of(counter: u64) -> usize {
-        std::convert::TryInto::try_into(counter % 33607).unwrap()
+        std::convert::TryInto::try_into(counter % 8).unwrap()
     }
-    fn build(&mut self, msg: Utterance) {}
-    fn validate(&mut self, builder: Pubkey) {}
     fn distribute_reward(&mut self, builder: Pubkey) {}
 }
+impl OntologyAccount{
+    fn add_utterance(&mut self,utterance :Utterance) -> u64 {
+        self.utterances[OntologyAccount::index_of(self.head)] = utterance;
+        if OntologyAccount::index_of(self.head + 1) == OntologyAccount::index_of(self.tail) {
+            self.tail += 1;
+        }
+        self.head += 1;
+        self.head
+    }
+    fn validate_utterance(&mut self,utterance_id :u64) {
+
+    }
+    fn index_of(counter: u64) -> usize {
+        std::convert::TryInto::try_into(counter % 8).unwrap()
+    }
+}
 
 
-
-#[instruction(campaign_ref: String, bump: u8)]
 #[derive(Accounts)]
 pub struct OnBuilder<'info>{
-    #[account(
-    mut,
-    seeds = [b"my-state", campaign_ref.as_bytes()],
-    bump = bump,
-    )]
+    pub builder: AccountInfo<'info>,
+    #[account(mut)]
+    pub pool: Loader<'info, PoolAccount>,
+   #[account(mut)]
+    pub campaign: Loader<'info, Campaign>,
+    #[account(mut)]
     pub ontology_account: Loader<'info, OntologyAccount>,
-    #[account(signer)]
-    pub builder: AccountInfo<'info>
 }
-
-#[instruction(campaign_ref: String, bump: u8)]
 #[derive(Accounts)]
 pub struct OnValidator<'info>{
-    #[account(
-    mut,
-    seeds = [b"my-state", campaign_ref.as_bytes()],
-    bump = bump,
-    )]
-    pub ontology_account: Loader<'info, OntologyAccount>,
     #[account(signer)]
-    pub validator: AccountInfo<'info>
+    pub validator: AccountInfo<'info>,
+    #[account(mut)]
+    pub campaign: Loader<'info, Campaign>,
+    #[account(mut)]
+    pub pool: Loader<'info, PoolAccount>,
+    #[account(mut)]
+    pub ontology_account: Loader<'info, OntologyAccount>,
 }
 
-
+#[derive(Accounts)]
+pub struct Python<'info>{
+    pub user: AccountInfo<'info>,
+}
