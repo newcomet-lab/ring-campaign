@@ -90,7 +90,7 @@ pub mod contracts {
         ontology.stake_period = stake_period;
         ontology.builder = [Pubkey::default();5];
         ontology.validator = [Pubkey::default();3];
-        campaign.add_architect(ontology.clone());
+        campaign.add_architect(ontology.architect);
         Ok(())
     }
     pub fn builder(ctx: Context<OnBuilder>,campaign_ref:String) -> ProgramResult {
@@ -187,6 +187,9 @@ pub struct CreateCampaign<'info>  {
 #[account(zero_copy)]
 pub struct Campaign {
     refID : u64,
+    head: u64,
+    tail: u64,
+    architects : [Pubkey;8],
     title: [u8; 280],
     description: [u8; 280],
     minimum_builder : u64,
@@ -213,9 +216,15 @@ pub struct Validate {
 }
 
 impl Campaign {
-    fn add_architect(&mut self,ontology :  OntologyAccount ) -> ProgramResult {
-       // self.ontologies[self.ontologies.len()] = ontology;
-        Ok(())
+    fn add_architect(&mut self,architect :  Pubkey )  {
+        self.architects[Campaign::index_of(self.head)] = architect;
+        if Campaign::index_of(self.head + 1) == Campaign::index_of(self.tail) {
+            self.tail += 1;
+        }
+        self.head += 1;
+    }
+    fn index_of(counter: u64) -> usize {
+        std::convert::TryInto::try_into(counter % 33607).unwrap()
     }
     fn build(&mut self, msg: Utterance) {}
     fn validate(&mut self, builder: Pubkey) {}
