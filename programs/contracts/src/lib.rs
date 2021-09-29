@@ -80,6 +80,7 @@ pub mod contracts {
         });
         Ok(())
     }
+    #[access_control(check_campaign(&ctx.accounts.campaign))]
     pub fn architect_init(ctx: Context<InitOntology>,stake_amount : u64,stake_period :u64) -> ProgramResult {
         let ontology = &mut ctx.accounts.ontology_account.load_init()?;
         let campaign = &mut ctx.accounts.campaign.load_mut()?;
@@ -90,9 +91,10 @@ pub mod contracts {
         ontology.stake_period = stake_period;
         ontology.builder = [Pubkey::default();5];
         ontology.validator = [Pubkey::default();3];
-        campaign.add_architect(ontology.architect);
+        campaign.set_architect(ontology.architect);
         Ok(())
     }
+
     pub fn utterance(ctx: Context<OnBuilder>,msg :String) -> ProgramResult {
         let ontology = &mut ctx.accounts.ontology_account.load_mut()?;
         let campaign = &mut ctx.accounts.campaign.load_mut()?;
@@ -144,6 +146,17 @@ pub struct InitOntology<'info> {
     pub campaign: Loader<'info, Campaign>,
     #[account(mut)]
     pub pool: Loader<'info, PoolAccount>
+}
+// Prevent duplicate ontology per campaign
+fn check_campaign<'info>(
+    campaign_account: &Loader<'info,Campaign>
+) -> ProgramResult {
+    let campaign = campaign_account.load()?;
+    if campaign.architect == Pubkey::default() {
+        Ok(())
+    }else {
+        Err(ProgramError::AccountAlreadyInitialized)
+    }
 }
 
 
@@ -209,7 +222,7 @@ pub struct Campaign {
     refID : u64,
     head: u64,
     tail: u64,
-    architects : [Pubkey;8],
+    architect : Pubkey,
     title: [u8; 280],
     description: [u8; 280],
     minimum_builder : u64,
@@ -236,15 +249,8 @@ pub struct Validate {
 }
 
 impl Campaign {
-    fn add_architect(&mut self,architect :  Pubkey )  {
-        self.architects[Campaign::index_of(self.head)] = architect;
-        if Campaign::index_of(self.head + 1) == Campaign::index_of(self.tail) {
-            self.tail += 1;
-        }
-        self.head += 1;
-    }
-    fn index_of(counter: u64) -> usize {
-        std::convert::TryInto::try_into(counter % 8).unwrap()
+    fn set_architect(&mut self,architect :  Pubkey )  {
+        self.architect = architect;
     }
     fn distribute_reward(&mut self, builder: Pubkey) {}
 }
