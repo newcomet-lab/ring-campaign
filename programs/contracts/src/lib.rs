@@ -107,12 +107,19 @@ pub mod contracts {
             builder :  ctx.accounts.builder.key(),
             validator : Pubkey::default(),
             validated: false,
+            is_valid: false,
             data
         });
 
         Ok(())
     }
-    pub fn validator(ctx: Context<OnValidator>) -> ProgramResult {
+    pub fn validate(ctx: Context<OnValidator>,utterance_id :u64, status : bool) -> ProgramResult
+    {
+        let ontology = &mut ctx.accounts.ontology_account.load_mut()?;
+        let campaign = &mut ctx.accounts.campaign.load_mut()?;
+        let pool = &mut ctx.accounts.pool.load_mut()?;
+        let validator = *ctx.accounts.validator.key;
+        ontology.update_utterance(utterance_id,status,validator);
         Ok(())
     }
     pub fn checkpy(ctx: Context<Python>) -> ProgramResult {
@@ -241,7 +248,8 @@ pub struct Utterance {
     pub builder: Pubkey,
     pub validator :Pubkey,
     pub data: [u8; 256],
-    pub validated :bool
+    pub validated :bool,
+    pub is_valid : bool
 }
 
 #[zero_copy]
@@ -265,8 +273,10 @@ impl OntologyAccount{
         self.head += 1;
         self.head
     }
-    fn validate_utterance(&mut self,utterance_id :u64) {
-
+    fn update_utterance(&mut self,utterance_id :u64,status:bool,validator: Pubkey) {
+        self.utterances[utterance_id as usize].validated = true;
+        self.utterances[utterance_id as usize].is_valid = status;
+        self.utterances[utterance_id as usize ].validator = validator;
     }
     fn index_of(counter: u64) -> usize {
         std::convert::TryInto::try_into(counter % 8).unwrap()
@@ -276,6 +286,7 @@ impl OntologyAccount{
 
 #[derive(Accounts)]
 pub struct OnBuilder<'info>{
+    #[account(signer)]
     pub builder: AccountInfo<'info>,
     #[account(mut)]
     pub pool: Loader<'info, PoolAccount>,
@@ -289,9 +300,9 @@ pub struct OnValidator<'info>{
     #[account(signer)]
     pub validator: AccountInfo<'info>,
     #[account(mut)]
-    pub campaign: Loader<'info, Campaign>,
-    #[account(mut)]
     pub pool: Loader<'info, PoolAccount>,
+    #[account(mut)]
+    pub campaign: Loader<'info, Campaign>,
     #[account(mut)]
     pub ontology_account: Loader<'info, OntologyAccount>,
 }

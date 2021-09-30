@@ -230,6 +230,7 @@ describe('contracts', () => {
                         campaign: customer.publicKey,
                         pool : admin.publicKey,
                     },
+                    signers:[builder]
                 }
             );
         }
@@ -247,6 +248,63 @@ describe('contracts', () => {
         assert.ok(utter.startsWith("hello"));
     }).timeout(90000);
 
+    it("validate 2 Utterance of 3 submitted", async () => {
+        const pool = await program.account.poolAccount.fetch(admin.publicKey);
+        const campaign = await program.account.campaign.fetch(customer.publicKey);
+        const ontology = await program.account.ontologyAccount.fetch(campaign.architect);
+        const ontology_address = await program.account.ontologyAccount.associatedAddress(campaign.architect);
+        let utterance0 = new TextDecoder("utf-8").decode(new Uint8Array(ontology.utterances[0].data));
+        let utterance1 = new TextDecoder("utf-8").decode(new Uint8Array(ontology.utterances[1].data));
 
+       // validated first submitted utterance
+        if (utterance0.startsWith("hello utterance0") ) {
+            await program.rpc.validate(
+                new anchor.BN(0),
+                true,
+                {
+                    accounts: {
+                        validator: validator.publicKey,
+                        ontologyAccount: campaign.architect,
+                        campaign: customer.publicKey,
+                        pool : admin.publicKey,
+                    },
+                    signers:[validator]
+                }
+            );
+       }
+        // refuse second submitted utterance
+       if (utterance1.startsWith("hello utterance1") ) {
+           await program.rpc.validate(
+               new anchor.BN(1),
+               true,
+               {
+                   accounts: {
+                       validator: validator.publicKey,
+                       ontologyAccount: campaign.architect,
+                       campaign: customer.publicKey,
+                       pool : admin.publicKey,
+                   },
+                   signers:[validator]
+               }
+           );
+       }
+
+    }).timeout(90000);
+
+    it("Get the current status of Ontology", async () => {
+        const pool = await program.account.poolAccount.fetch(admin.publicKey);
+        const campaign = await program.account.campaign.fetch(customer.publicKey);
+        const ontology = await program.account.ontologyAccount.fetch(campaign.architect);
+        for (j=0;j<ontology.head;j++){
+            let test = new TextDecoder("utf-8").decode(new Uint8Array(ontology.utterances[j].data));
+            if (ontology.utterances[j].validated){
+                console.log("\tutterance : ",test,
+                    "\n\tbuilder is ",ontology.utterances[j].builder.toBase58(),
+                    "\n\tvalidator is ",ontology.utterances[j].validator.toBase58(),
+                    "\n\tvalidation status :",ontology.utterances[j].isValid);
+            }
+
+        }
+    }).timeout(90000);
 });
 
