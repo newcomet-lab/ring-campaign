@@ -217,24 +217,36 @@ describe('contracts', () => {
     });
 
     it("Submit Utterance to an ontology", async () => {
-        let utterance = "hello";
+        let utterance = "hello utterance";
         const pool = await program.account.poolAccount.fetch(admin.publicKey);
         const campaign = await program.account.campaign.fetch(customer.publicKey);
-        console.log("\t\tAddress:", campaign.architect.toBase58());
+        for (i=0 ;i<3;i++){
+            const transaction = await program.rpc.utterance(
+                utterance+i,
+                {
+                    accounts: {
+                        builder: builder.publicKey,
+                        ontologyAccount: campaign.architect,
+                        campaign: customer.publicKey,
+                        pool : admin.publicKey,
+                    },
+                }
+            );
+        }
 
-        const transaction = await program.rpc.utterance(
-            utterance, {
-                accounts: {
-                    builder: builder.publicKey,
-                    ontologyAccount: campaign.architect,
-                    campaign: customer.publicKey,
-                    pool : admin.publicKey,
-                },
-            }
-        );
         const ontology = await program.account.ontologyAccount.fetch(campaign.architect);
+        const ontology_address = await program.account.ontologyAccount.associatedAddress(campaign.architect);
+        console.log("\t",ontology.head.toString()," utterances submited to ontology : ",ontology_address.toBase58());
         let utter = new TextDecoder("utf-8").decode(new Uint8Array(ontology.utterances[0].data));
+        for (j=0;j<ontology.head;j++){
+            let test = new TextDecoder("utf-8").decode(new Uint8Array(ontology.utterances[j].data));
+            console.log("\tutterance : ",test,
+                " submitted by ",ontology.utterances[j].builder.toBase58(),
+                "and validation status :",ontology.utterances[j].validated);
+        }
         assert.ok(utter.startsWith("hello"));
     }).timeout(90000);
+
+
 });
 

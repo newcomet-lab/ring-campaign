@@ -45,6 +45,7 @@ pub mod contracts {
         pool.reward_apy = apy ;
         Ok(())
     }
+
     pub fn create_campaign(ctx: Context<CreateCampaign>,
                            off_chain_reference: u64,
                            period : u64,
@@ -158,6 +159,7 @@ fn check_campaign<'info>(
         Err(ProgramError::AccountAlreadyInitialized)
     }
 }
+
 
 
 /// Pool Initialization accounts and set authority
