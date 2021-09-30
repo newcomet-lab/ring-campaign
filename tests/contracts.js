@@ -28,6 +28,7 @@ const architectB = anchor.web3.Keypair.generate();
 const builder = anchor.web3.Keypair.generate();
 const validator = anchor.web3.Keypair.generate();
 
+
 describe('contracts', () => {
 
     it("log users", async () => {
@@ -96,6 +97,10 @@ describe('contracts', () => {
         const description = "create data set for support system";
         const reward_per_utterance = new anchor.BN(2) ;
         const validation_quorum = 64 ;
+        const topic_domain = "my topic";
+        const topic_subject = "new subject";
+        const topic_explain = "here is my explain";
+        const seed_phrase = "write sentence about solana";
 
         await program.rpc.createCampaign(
             offChainReference,
@@ -106,9 +111,14 @@ describe('contracts', () => {
             description,
             reward_per_utterance,
             validation_quorum,
+            topic_domain,
+            topic_subject,
+            topic_explain,
+            seed_phrase,
             {
                 accounts: {
                     campaign: customer.publicKey,
+                    organizer: customer.publicKey,
                     pool: admin.publicKey
                 },
                 instructions: [
@@ -131,7 +141,10 @@ describe('contracts', () => {
         const description = "create data set for support system";
         const reward_per_utterance = new anchor.BN(1) ;
         const validation_quorum = 64 ;
-
+        const topic_domain = "my topic";
+        const topic_subject = "new subject 2";
+        const topic_explain = "here is new explain";
+        const seed_phrase = "write sentence about blockchain";
         await program.rpc.createCampaign(
             offChainReference,
             period,
@@ -141,9 +154,14 @@ describe('contracts', () => {
             description,
             reward_per_utterance,
             validation_quorum,
+            topic_domain,
+            topic_subject,
+            topic_explain,
+            seed_phrase,
             {
                 accounts: {
                     campaign: customerB.publicKey,
+                    organizer: customerB.publicKey,
                     pool: admin.publicKey
                 },
                 instructions: [

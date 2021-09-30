@@ -16,6 +16,8 @@ use anchor_lang::prelude::borsh::{BorshSerialize,BorshDeserialize};
 use std::io::Write;
 
 declare_id!("GWzBR7znXxEVDkDVgQQu5Vpzu3a5G4e5kPXaE9MvebY2");
+const SMALL: usize = 256;
+const MEDIUM: usize = 1024;
 
 #[program]
 pub mod contracts {
@@ -54,7 +56,11 @@ pub mod contracts {
                            title : String,
                            description : String,
                            reward_per_utterance : u64,
-                           validation_quorum : u8
+                           validation_quorum : u8,
+                           domain:String,
+                           subject:String,
+                           explain:String,
+                           phrase:String
     ) -> ProgramResult {
         let pool = &mut ctx.accounts.pool.load_mut()?;
         let campaign = &mut ctx.accounts.campaign.load_init()?;
@@ -64,6 +70,11 @@ pub mod contracts {
         campaign.minimum_builder = min_builder;
         campaign.minimum_validation = min_validator;
         campaign.time_limit = period ;
+        campaign.organizer = *ctx.accounts.organizer.key;
+        campaign.domain =  string_small(domain);
+        campaign.subject = string_small(subject);
+        campaign.explain = string_medium(explain);
+        campaign.phrase =  string_medium(phrase);
         let given_title = title.as_bytes();
         let mut title = [0u8; 280];
         title[..given_title.len()].copy_from_slice(given_title);
@@ -219,10 +230,11 @@ pub struct Auth<'info> {
 /// Fully Campaign Initialization
 #[derive(Accounts)]
 pub struct CreateCampaign<'info>  {
+    pub organizer: AccountInfo<'info>,
     #[account(zero,signer)]
     pub campaign: Loader<'info, Campaign>,
     #[account(mut)]
-    pub pool: Loader<'info, PoolAccount>,
+    pub pool: Loader<'info, PoolAccount>
 }
 
 /// Campaign Structure
@@ -231,6 +243,11 @@ pub struct Campaign {
     refID : u64,
     head: u64,
     tail: u64,
+    organizer : Pubkey,
+    domain : [u8; 256],
+    subject : [u8; 256],
+    explain : [u8; 1024],
+    phrase : [u8; 1024],
     architect : Pubkey,
     title: [u8; 280],
     description: [u8; 280],
@@ -310,4 +327,18 @@ pub struct OnValidator<'info>{
 #[derive(Accounts)]
 pub struct Python<'info>{
     pub user: AccountInfo<'info>,
+}
+
+pub fn string_small(input :String ) -> [u8;SMALL] {
+    let given_input = input.as_bytes();
+    let mut out = [0u8; SMALL];
+    out[..given_input.len()].copy_from_slice(given_input);
+    out
+}
+
+pub fn string_medium(input :String ) -> [u8;MEDIUM] {
+    let given_input = input.as_bytes();
+    let mut out = [0u8; MEDIUM];
+    out[..given_input.len()].copy_from_slice(given_input);
+    out
 }
