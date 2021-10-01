@@ -114,48 +114,6 @@ describe('contracts', () => {
             seed_phrase,
             {
                 accounts: {
-                    campaign: customer.publicKey,
-                    architect: customer.publicKey,
-                    pool: admin.publicKey
-                },
-                instructions: [
-                    await program.account.campaign.createInstruction(customer),
-                ],
-                signers: [customer],
-            });
-        const campaign = await program.account.campaign.fetch(customer.publicKey);
-        const campaignAddr = await program.account.campaign.associatedAddress(customer.publicKey);
-        console.log("\tcampaign address ",campaignAddr.toBase58());
-        assert.ok(campaign.minBuilder.eq(min_builder));
-    }).timeout(20000);
-    it("Duplicate Campaign by customer", async () => {
-        const pool = await program.account.poolAccount.fetch(admin.publicKey);
-        const offChainReference = new anchor.BN(1213);
-        const period = new anchor.BN(14) ;
-        const min_builder= new anchor.BN(5) ;
-        const min_validator= new anchor.BN(5) ;
-        const reward_per_builder = new anchor.BN(3) ;
-        const reward_per_validator = new anchor.BN(2) ;
-        const validation_quorum = 64 ;
-        const topic_domain = "my topic";
-        const topic_subject = "new subject";
-        const topic_explain = "here is my explain";
-        const seed_phrase = "write sentence about solana";
-
-        await program.rpc.createCampaign(
-            offChainReference,
-            period,
-            min_builder,
-            min_validator,
-            reward_per_builder,
-            reward_per_validator,
-            validation_quorum,
-            topic_domain,
-            topic_subject,
-            topic_explain,
-            seed_phrase,
-            {
-                accounts: {
                     campaign: architect.publicKey,
                     architect: architect.publicKey,
                     pool: admin.publicKey
@@ -170,52 +128,11 @@ describe('contracts', () => {
         console.log("\tcampaign address ",campaignAddr.toBase58());
         assert.ok(campaign.minBuilder.eq(min_builder));
     }).timeout(20000);
-    it("Create Campaign by customerB", async () => {
-        const pool = await program.account.poolAccount.fetch(admin.publicKey);
-        const offChainReference = new anchor.BN(1314);
-        const period = new anchor.BN(7) ;
-        const min_builder= new anchor.BN(6) ;
-        const min_validator= new anchor.BN(5) ;
-        const reward_per_builder = new anchor.BN(3) ;
-        const reward_per_validator = new anchor.BN(2) ;
-        const validation_quorum = 64 ;
-        const topic_domain = "my topic";
-        const topic_subject = "new subject 2";
-        const topic_explain = "here is new explain";
-        const seed_phrase = "write sentence about blockchain";
-        await program.rpc.createCampaign(
-            offChainReference,
-            period,
-            min_builder,
-            min_validator,
-            reward_per_builder,
-            reward_per_validator,
-            validation_quorum,
-            topic_domain,
-            topic_subject,
-            topic_explain,
-            seed_phrase,
-            {
-                accounts: {
-                    campaign: customerB.publicKey,
-                    architect: customerB.publicKey,
-                    pool: admin.publicKey
-                },
-                instructions: [
-                    await program.account.campaign.createInstruction(customerB),
-                ],
-                signers: [customerB],
-            });
-        const campaign = await program.account.campaign.fetch(customerB.publicKey);
-        const campaignAddrB = await program.account.campaign.associatedAddress(customerB.publicKey);
-        console.log("\tcampaign address ",campaignAddrB.toBase58());
-        assert.ok(campaign.minBuilder.eq(min_builder));
-    }).timeout(20000);
 
 
     it("Get a architect for a campaign", async () => {
-        const campaign = await program.account.campaign.fetch(customer.publicKey);
-        const campaignAddr = await program.account.campaign.associatedAddress(customer.publicKey);
+        const campaign = await program.account.campaign.fetch(architect.publicKey);
+        const campaignAddr = await program.account.campaign.associatedAddress(architect.publicKey);
         console.log("\tArchitects for campaign : ",campaignAddr.toBase58());
         console.log("\t\tis:", campaign.architect.toBase58());
     });
@@ -223,14 +140,14 @@ describe('contracts', () => {
     it("Submit Utterance to an ontology", async () => {
         let utterance = "hello utterance";
         const pool = await program.account.poolAccount.fetch(admin.publicKey);
-        const campaign = await program.account.campaign.fetch(customer.publicKey);
+        const campaign = await program.account.campaign.fetch(architect.publicKey);
         for (i=0 ;i<3;i++){
             const transaction = await program.rpc.utterance(
                 utterance+i,
                 {
                     accounts: {
                         builder: builder.publicKey,
-                        campaign: customer.publicKey,
+                        campaign: architect.publicKey,
                         pool : admin.publicKey,
                     },
                     signers:[builder]
@@ -238,8 +155,8 @@ describe('contracts', () => {
             );
         }
 
-        const campaignData = await program.account.campaign.fetch(customer.publicKey);
-        const campaignAddr = await program.account.campaign.associatedAddress(customer.publicKey);
+        const campaignData = await program.account.campaign.fetch(architect.publicKey);
+        const campaignAddr = await program.account.campaign.associatedAddress(architect.publicKey);
         console.log("\t",campaignData.head.toString()," utterances submited to campaign : ",campaignAddr.toBase58());
         let utter = new TextDecoder("utf-8").decode(new Uint8Array(campaignData.utterances[0].data));
         for (j=0;j<campaignData.head;j++){
@@ -254,8 +171,8 @@ describe('contracts', () => {
     it("validate 2 Utterance of 3 submitted", async () => {
         const pool = await program.account.poolAccount.fetch(admin.publicKey);
 
-        const campaignData = await program.account.campaign.fetch(customer.publicKey);
-        const campaignAddr = await program.account.campaign.associatedAddress(customer.publicKey);
+        const campaignData = await program.account.campaign.fetch(architect.publicKey);
+        const campaignAddr = await program.account.campaign.associatedAddress(architect.publicKey);
         let utterance0 = new TextDecoder("utf-8").decode(new Uint8Array(campaignData.utterances[0].data));
         let utterance1 = new TextDecoder("utf-8").decode(new Uint8Array(campaignData.utterances[1].data));
 
@@ -267,7 +184,7 @@ describe('contracts', () => {
                 {
                     accounts: {
                         validator: validator.publicKey,
-                        campaign: customer.publicKey,
+                        campaign: architect.publicKey,
                         pool : admin.publicKey,
                     },
                     signers:[validator]
@@ -282,7 +199,7 @@ describe('contracts', () => {
                {
                    accounts: {
                        validator: validator.publicKey,
-                       campaign: customer.publicKey,
+                       campaign: architect.publicKey,
                        pool : admin.publicKey,
                    },
                    signers:[validator]
@@ -294,7 +211,7 @@ describe('contracts', () => {
 
     it("Get the current status of Ontology", async () => {
         const pool = await program.account.poolAccount.fetch(admin.publicKey);
-        const campaign = await program.account.campaign.fetch(customer.publicKey);
+        const campaign = await program.account.campaign.fetch(architect.publicKey);
         for (j=0;j<campaign.head;j++){
             let test = new TextDecoder("utf-8").decode(new Uint8Array(campaign.utterances[j].data));
             if (campaign.utterances[j].validated){
