@@ -86,7 +86,7 @@ describe('contracts', () => {
         assert.ok(pool.rewardApy === newApy);
         assert.ok(previous_pool.rewardApy !== pool.rewardApy);
     }).timeout(20000);
-    it("Create Campaign by customer", async () => {
+    it("Create Campaign by architect", async () => {
         const pool = await program.account.poolAccount.fetch(admin.publicKey);
         const offChainReference = new anchor.BN(1213);
         const period = new anchor.BN(14) ;
@@ -128,7 +128,48 @@ describe('contracts', () => {
         console.log("\tcampaign address ",campaignAddr.toBase58());
         assert.ok(campaign.minBuilder.eq(min_builder));
     }).timeout(20000);
+    it("Create Campaign by architectB", async () => {
+        const pool = await program.account.poolAccount.fetch(admin.publicKey);
+        const offChainReference = new anchor.BN(1213);
+        const period = new anchor.BN(14) ;
+        const min_builder= new anchor.BN(5) ;
+        const min_validator= new anchor.BN(5) ;
+        const reward_per_builder = new anchor.BN(3) ;
+        const reward_per_validator = new anchor.BN(2) ;
+        const validation_quorum = 64 ;
+        const topic_domain = "my topic";
+        const topic_subject = "new subject";
+        const topic_explain = "here is my explain";
+        const seed_phrase = "write sentence about solana";
 
+        await program.rpc.createCampaign(
+            offChainReference,
+            period,
+            min_builder,
+            min_validator,
+            reward_per_builder,
+            reward_per_validator,
+            validation_quorum,
+            topic_domain,
+            topic_subject,
+            topic_explain,
+            seed_phrase,
+            {
+                accounts: {
+                    campaign: architectB.publicKey,
+                    architect: architectB.publicKey,
+                    pool: admin.publicKey
+                },
+                instructions: [
+                    await program.account.campaign.createInstruction(architectB),
+                ],
+                signers: [architectB],
+            });
+        const campaign = await program.account.campaign.fetch(architectB.publicKey);
+        const campaignAddr = await program.account.campaign.associatedAddress(architectB.publicKey);
+        console.log("\tcampaign address ",campaignAddr.toBase58());
+        assert.ok(campaign.minBuilder.eq(min_builder));
+    }).timeout(20000);
 
     it("Get a architect for a campaign", async () => {
         const campaign = await program.account.campaign.fetch(architect.publicKey);
