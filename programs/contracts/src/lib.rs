@@ -32,7 +32,7 @@ pub mod contracts {
     ) -> ProgramResult {
         let pool = &mut ctx.accounts.pool_account.load_init()?;
         pool.sns_mint = *ctx.accounts.sns.key;
-        pool.distribution_authority =*ctx.accounts.pool_authority.key;
+        pool.authority =*ctx.accounts.pool_authority.key;
         pool.reward_apy = reward_apy;
         pool.penalty = penalty;
         pool.pool_cap = pool_cap;
@@ -41,9 +41,9 @@ pub mod contracts {
         pool.validator_stake = validator_stake;
         Ok(())
     }
-    pub fn update_pool(ctx: Context<updatePool>,apy : u8) -> ProgramResult {
+    pub fn update_pool(ctx: Context<updatePool>,apy : u8,authority : Pubkey) -> ProgramResult {
         let pool = &mut ctx.accounts.pool_account.load_mut()?;
-        pool.distribution_authority = ctx.accounts.new_authority.key();
+        pool.authority = authority;
         pool.reward_apy = apy ;
         Ok(())
     }
@@ -76,7 +76,7 @@ pub mod contracts {
         campaign.reward_per_validator = reward_per_validator;
         campaign.validation_quorum = validation_quorum;
         campaign.set_architect(*ctx.accounts.architect.key);
-
+        pool.add_campaign(*ctx.accounts.architect.key);
        // pool.add_campaign(ctx.accounts.campaign);
         emit!( SynEvent{
             kind : Events::CmapaginCreate,
@@ -167,16 +167,17 @@ pub struct initPool<'info> {
 /// Account to update pool authority
 #[derive(Accounts)]
 pub struct updatePool<'info> {
-    pub new_authority: AccountInfo<'info>,
-    #[account(mut,signer)]
+    #[account(mut)]
     pub pool_account: Loader<'info, PoolAccount>,
+    #[account(signer)]
+    pub authority: AccountInfo<'info>,
 }
 /// Structure of pool initialization
 #[account(zero_copy)]
 pub struct PoolAccount {
     pub admin: Pubkey,
     pub sns_mint: Pubkey,
-    pub distribution_authority: Pubkey,
+    pub authority: Pubkey,
     pub head: u64,
     pub tail: u64,
     pub campaigns : [Pubkey;1023],

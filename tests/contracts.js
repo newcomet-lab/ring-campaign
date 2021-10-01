@@ -27,10 +27,10 @@ const architect = anchor.web3.Keypair.generate();
 const architectB = anchor.web3.Keypair.generate();
 const builder = anchor.web3.Keypair.generate();
 const validator = anchor.web3.Keypair.generate();
+const new_authority = anchor.web3.Keypair.generate();
 
 
 describe('contracts', () => {
-
     it("log users", async () => {
         console.log("\thadi: ", hadi.publicKey.toBase58());
         console.log("\tadmin : ",admin.publicKey.toBase58());
@@ -63,7 +63,7 @@ describe('contracts', () => {
         });
         const pool = await program.account.poolAccount.fetch(admin.publicKey);
         assert.ok(pool.snsMint.equals(SNS));
-        assert.ok(pool.distributionAuthority.equals(user.publicKey));
+        assert.ok(pool.authority.equals(user.publicKey));
         assert.ok(pool.architectStake.eq(architect_stake));
         assert.ok(pool.builderStake.eq(builder_stake));
         assert.ok(pool.validatorStake.eq(validator_stake));
@@ -74,11 +74,11 @@ describe('contracts', () => {
     it("Update Mining Pool APY", async () => {
         const previous_pool = await program.account.poolAccount.fetch(admin.publicKey);
         const newApy = 13 ;
-        const  transaction =  await program.rpc.updatePool(newApy,
+        const  transaction =  await program.rpc.updatePool(newApy,new_authority.publicKey,
             {
                 accounts: {
                     poolAccount:admin.publicKey,
-                    newAuthority: admin.publicKey
+                    authority: admin.publicKey
                 },
                 signers: [admin]
             });
@@ -141,7 +141,6 @@ describe('contracts', () => {
         const topic_subject = "new subject";
         const topic_explain = "here is my explain";
         const seed_phrase = "write sentence about solana";
-
         await program.rpc.createCampaign(
             offChainReference,
             period,
@@ -170,12 +169,19 @@ describe('contracts', () => {
         console.log("\tcampaign address ",campaignAddr.toBase58());
         assert.ok(campaign.minBuilder.eq(min_builder));
     }).timeout(20000);
-
     it("Get a architect for a campaign", async () => {
         const campaign = await program.account.campaign.fetch(architect.publicKey);
         const campaignAddr = await program.account.campaign.associatedAddress(architect.publicKey);
         console.log("\tArchitects for campaign : ",campaignAddr.toBase58());
         console.log("\t\tis:", campaign.architect.toBase58());
+    });
+    it("Get All Campaigna", async () => {
+        const pool = await program.account.poolAccount.fetch(admin.publicKey);
+        let campaigns = pool.campaigns;
+        for(let z=0; z<pool.head;z++){
+            const campaignAddr = await program.account.campaign.associatedAddress(campaigns[z]);
+            console.log("\tarchitect ",campaigns[z].toBase58(),"\tcreated campaign ",campaignAddr.toBase58());
+        }
     });
 
     it("Submit Utterance to an ontology", async () => {
