@@ -86,16 +86,14 @@ describe('contracts', () => {
         assert.ok(pool.rewardApy === newApy);
         assert.ok(previous_pool.rewardApy !== pool.rewardApy);
     }).timeout(20000);
-
     it("Create Campaign by customer", async () => {
         const pool = await program.account.poolAccount.fetch(admin.publicKey);
         const offChainReference = new anchor.BN(1213);
         const period = new anchor.BN(14) ;
         const min_builder= new anchor.BN(5) ;
         const min_validator= new anchor.BN(5) ;
-        const title = "first campaign";
-        const description = "create data set for support system";
-        const reward_per_utterance = new anchor.BN(2) ;
+        const reward_per_builder = new anchor.BN(3) ;
+        const reward_per_validator = new anchor.BN(2) ;
         const validation_quorum = 64 ;
         const topic_domain = "my topic";
         const topic_subject = "new subject";
@@ -107,9 +105,8 @@ describe('contracts', () => {
             period,
             min_builder,
             min_validator,
-            title,
-            description,
-            reward_per_utterance,
+            reward_per_builder,
+            reward_per_validator,
             validation_quorum,
             topic_domain,
             topic_subject,
@@ -118,7 +115,7 @@ describe('contracts', () => {
             {
                 accounts: {
                     campaign: customer.publicKey,
-                    organizer: customer.publicKey,
+                    architect: customer.publicKey,
                     pool: admin.publicKey
                 },
                 instructions: [
@@ -129,7 +126,49 @@ describe('contracts', () => {
         const campaign = await program.account.campaign.fetch(customer.publicKey);
         const campaignAddr = await program.account.campaign.associatedAddress(customer.publicKey);
         console.log("\tcampaign address ",campaignAddr.toBase58());
-        assert.ok(campaign.minimumBuilder.eq(min_builder));
+        assert.ok(campaign.minBuilder.eq(min_builder));
+    }).timeout(20000);
+    it("Duplicate Campaign by customer", async () => {
+        const pool = await program.account.poolAccount.fetch(admin.publicKey);
+        const offChainReference = new anchor.BN(1213);
+        const period = new anchor.BN(14) ;
+        const min_builder= new anchor.BN(5) ;
+        const min_validator= new anchor.BN(5) ;
+        const reward_per_builder = new anchor.BN(3) ;
+        const reward_per_validator = new anchor.BN(2) ;
+        const validation_quorum = 64 ;
+        const topic_domain = "my topic";
+        const topic_subject = "new subject";
+        const topic_explain = "here is my explain";
+        const seed_phrase = "write sentence about solana";
+
+        await program.rpc.createCampaign(
+            offChainReference,
+            period,
+            min_builder,
+            min_validator,
+            reward_per_builder,
+            reward_per_validator,
+            validation_quorum,
+            topic_domain,
+            topic_subject,
+            topic_explain,
+            seed_phrase,
+            {
+                accounts: {
+                    campaign: architect.publicKey,
+                    architect: architect.publicKey,
+                    pool: admin.publicKey
+                },
+                instructions: [
+                    await program.account.campaign.createInstruction(architect),
+                ],
+                signers: [architect],
+            });
+        const campaign = await program.account.campaign.fetch(architect.publicKey);
+        const campaignAddr = await program.account.campaign.associatedAddress(architect.publicKey);
+        console.log("\tcampaign address ",campaignAddr.toBase58());
+        assert.ok(campaign.minBuilder.eq(min_builder));
     }).timeout(20000);
     it("Create Campaign by customerB", async () => {
         const pool = await program.account.poolAccount.fetch(admin.publicKey);
@@ -137,9 +176,8 @@ describe('contracts', () => {
         const period = new anchor.BN(7) ;
         const min_builder= new anchor.BN(6) ;
         const min_validator= new anchor.BN(5) ;
-        const title = "first campaign";
-        const description = "create data set for support system";
-        const reward_per_utterance = new anchor.BN(1) ;
+        const reward_per_builder = new anchor.BN(3) ;
+        const reward_per_validator = new anchor.BN(2) ;
         const validation_quorum = 64 ;
         const topic_domain = "my topic";
         const topic_subject = "new subject 2";
@@ -150,9 +188,8 @@ describe('contracts', () => {
             period,
             min_builder,
             min_validator,
-            title,
-            description,
-            reward_per_utterance,
+            reward_per_builder,
+            reward_per_validator,
             validation_quorum,
             topic_domain,
             topic_subject,
@@ -161,7 +198,7 @@ describe('contracts', () => {
             {
                 accounts: {
                     campaign: customerB.publicKey,
-                    organizer: customerB.publicKey,
+                    architect: customerB.publicKey,
                     pool: admin.publicKey
                 },
                 instructions: [
@@ -172,62 +209,11 @@ describe('contracts', () => {
         const campaign = await program.account.campaign.fetch(customerB.publicKey);
         const campaignAddrB = await program.account.campaign.associatedAddress(customerB.publicKey);
         console.log("\tcampaign address ",campaignAddrB.toBase58());
-        assert.ok(campaign.minimumBuilder.eq(min_builder));
+        assert.ok(campaign.minBuilder.eq(min_builder));
     }).timeout(20000);
 
-    it("Create Ontology by architect by customer", async () => {
 
-        const stake_amount = new anchor.BN(1000);
-        const stake_period = new anchor.BN(7) ;
-        const  transaction =  await program.rpc.architectInit(
-            stake_amount,
-            stake_period,
-            {
-                accounts: {
-                    ontologyAccount: architect.publicKey,
-                    architect: architect.publicKey,
-                    campaign: customer.publicKey,
-                    pool :admin.publicKey,
-                },
-                instructions: [
-                    await program.account.ontologyAccount.createInstruction(architect),
-                ],
-                signers: [architect],
-            });
-        const ontology = await program.account.ontologyAccount.fetch(architect.publicKey);
-        const pool = await program.account.poolAccount.fetch(admin.publicKey);
-        const campaign = await program.account.campaign.fetch(customer.publicKey);
-        assert.ok(true);
-    }).timeout(30000);
-
-    it("duplicate Ontology by architect", async () => {
-        await assert.rejects(
-            async () => {
-                const stake_amount = new anchor.BN(1000);
-                const stake_period = new anchor.BN(7) ;
-                const  transaction =  await program.rpc.architectInit(
-                    stake_amount,
-                    stake_period,
-                    {
-                        accounts: {
-                            ontologyAccount: architect.publicKey,
-                            architect: architect.publicKey,
-                            campaign: customer.publicKey,
-                            pool :admin.publicKey,
-                        },
-                        instructions: [
-                            await program.account.ontologyAccount.createInstruction(architect),
-                        ],
-                        signers: [architect],
-                    });
-            },
-            (err) => {
-                return true;
-            }
-        );
-    });
-
-    it("Get a ontology for a campaign", async () => {
+    it("Get a architect for a campaign", async () => {
         const campaign = await program.account.campaign.fetch(customer.publicKey);
         const campaignAddr = await program.account.campaign.associatedAddress(customer.publicKey);
         console.log("\tArchitects for campaign : ",campaignAddr.toBase58());
@@ -244,7 +230,6 @@ describe('contracts', () => {
                 {
                     accounts: {
                         builder: builder.publicKey,
-                        ontologyAccount: campaign.architect,
                         campaign: customer.publicKey,
                         pool : admin.publicKey,
                     },
@@ -253,26 +238,26 @@ describe('contracts', () => {
             );
         }
 
-        const ontology = await program.account.ontologyAccount.fetch(campaign.architect);
-        const ontology_address = await program.account.ontologyAccount.associatedAddress(campaign.architect);
-        console.log("\t",ontology.head.toString()," utterances submited to ontology : ",ontology_address.toBase58());
-        let utter = new TextDecoder("utf-8").decode(new Uint8Array(ontology.utterances[0].data));
-        for (j=0;j<ontology.head;j++){
-            let test = new TextDecoder("utf-8").decode(new Uint8Array(ontology.utterances[j].data));
+        const campaignData = await program.account.campaign.fetch(customer.publicKey);
+        const campaignAddr = await program.account.campaign.associatedAddress(customer.publicKey);
+        console.log("\t",campaignData.head.toString()," utterances submited to campaign : ",campaignAddr.toBase58());
+        let utter = new TextDecoder("utf-8").decode(new Uint8Array(campaignData.utterances[0].data));
+        for (j=0;j<campaignData.head;j++){
+            let test = new TextDecoder("utf-8").decode(new Uint8Array(campaignData.utterances[j].data));
             console.log("\tutterance : ",test,
-                " submitted by ",ontology.utterances[j].builder.toBase58(),
-                "and validation status :",ontology.utterances[j].validated);
+                " submitted by ",campaignData.utterances[j].builder.toBase58(),
+                "and validation status :",campaignData.utterances[j].validated);
         }
         assert.ok(utter.startsWith("hello"));
     }).timeout(90000);
 
     it("validate 2 Utterance of 3 submitted", async () => {
         const pool = await program.account.poolAccount.fetch(admin.publicKey);
-        const campaign = await program.account.campaign.fetch(customer.publicKey);
-        const ontology = await program.account.ontologyAccount.fetch(campaign.architect);
-        const ontology_address = await program.account.ontologyAccount.associatedAddress(campaign.architect);
-        let utterance0 = new TextDecoder("utf-8").decode(new Uint8Array(ontology.utterances[0].data));
-        let utterance1 = new TextDecoder("utf-8").decode(new Uint8Array(ontology.utterances[1].data));
+
+        const campaignData = await program.account.campaign.fetch(customer.publicKey);
+        const campaignAddr = await program.account.campaign.associatedAddress(customer.publicKey);
+        let utterance0 = new TextDecoder("utf-8").decode(new Uint8Array(campaignData.utterances[0].data));
+        let utterance1 = new TextDecoder("utf-8").decode(new Uint8Array(campaignData.utterances[1].data));
 
        // validated first submitted utterance
         if (utterance0.startsWith("hello utterance0") ) {
@@ -282,7 +267,6 @@ describe('contracts', () => {
                 {
                     accounts: {
                         validator: validator.publicKey,
-                        ontologyAccount: campaign.architect,
                         campaign: customer.publicKey,
                         pool : admin.publicKey,
                     },
@@ -298,7 +282,6 @@ describe('contracts', () => {
                {
                    accounts: {
                        validator: validator.publicKey,
-                       ontologyAccount: campaign.architect,
                        campaign: customer.publicKey,
                        pool : admin.publicKey,
                    },
@@ -312,14 +295,13 @@ describe('contracts', () => {
     it("Get the current status of Ontology", async () => {
         const pool = await program.account.poolAccount.fetch(admin.publicKey);
         const campaign = await program.account.campaign.fetch(customer.publicKey);
-        const ontology = await program.account.ontologyAccount.fetch(campaign.architect);
-        for (j=0;j<ontology.head;j++){
-            let test = new TextDecoder("utf-8").decode(new Uint8Array(ontology.utterances[j].data));
-            if (ontology.utterances[j].validated){
+        for (j=0;j<campaign.head;j++){
+            let test = new TextDecoder("utf-8").decode(new Uint8Array(campaign.utterances[j].data));
+            if (campaign.utterances[j].validated){
                 console.log("\tutterance : ",test,
-                    "\n\tbuilder is ",ontology.utterances[j].builder.toBase58(),
-                    "\n\tvalidator is ",ontology.utterances[j].validator.toBase58(),
-                    "\n\tvalidation status :",ontology.utterances[j].isValid);
+                    "\n\tbuilder is ",campaign.utterances[j].builder.toBase58(),
+                    "\n\tvalidator is ",campaign.utterances[j].validator.toBase58(),
+                    "\n\tvalidation status :",campaign.utterances[j].isValid);
             }
 
         }

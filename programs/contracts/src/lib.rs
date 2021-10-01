@@ -53,9 +53,8 @@ pub mod contracts {
                            period : u64,
                            min_builder : u64,
                            min_validator : u64,
-                           title : String,
-                           description : String,
-                           reward_per_utterance : u64,
+                           reward_per_builder : u64,
+                           reward_per_validator : u64,
                            validation_quorum : u8,
                            domain:String,
                            subject:String,
@@ -66,55 +65,33 @@ pub mod contracts {
         let campaign = &mut ctx.accounts.campaign.load_init()?;
         campaign.reward_token = pool.sns_mint;
         campaign.refID = off_chain_reference;
-        campaign.fixed_reward_apy =pool.reward_apy ;
-        campaign.minimum_builder = min_builder;
-        campaign.minimum_validation = min_validator;
+        campaign.min_builder = min_builder;
+        campaign.min_validator = min_validator;
         campaign.time_limit = period ;
-        campaign.organizer = *ctx.accounts.organizer.key;
         campaign.domain =  string_small(domain);
         campaign.subject = string_small(subject);
         campaign.explain = string_medium(explain);
         campaign.phrase =  string_medium(phrase);
-        let given_title = title.as_bytes();
-        let mut title = [0u8; 280];
-        title[..given_title.len()].copy_from_slice(given_title);
-        campaign.title = title ;
-
-        let given_description = description.as_bytes();
-        let mut description = [0u8; 280];
-        description[..given_description.len()].copy_from_slice(given_description);
-        campaign.description = description ;
-        campaign.reward_per_utterance = reward_per_utterance;
+        campaign.reward_per_builder = reward_per_builder;
+        campaign.reward_per_validator = reward_per_validator;
         campaign.validation_quorum = validation_quorum;
+        campaign.set_architect(*ctx.accounts.architect.key);
+
+       // pool.add_campaign(ctx.accounts.campaign);
         emit!( SynEvent{
             kind : Events::CmapaginCreate,
             user : Pubkey::default()
         });
         Ok(())
     }
-    #[access_control(check_campaign(&ctx.accounts.campaign))]
-    pub fn architect_init(ctx: Context<InitOntology>,stake_amount : u64,stake_period :u64) -> ProgramResult {
-        let ontology = &mut ctx.accounts.ontology_account.load_init()?;
-        let campaign = &mut ctx.accounts.campaign.load_mut()?;
-        let pool = &mut ctx.accounts.pool.load_mut()?;
-        ontology.architect = *ctx.accounts.architect.key ;
-        ontology.campaign_ref = campaign.refID;
-        ontology.stake_amount = stake_amount;
-        ontology.stake_period = stake_period;
-        ontology.builder = [Pubkey::default();5];
-        ontology.validator = [Pubkey::default();3];
-        campaign.set_architect(ontology.architect);
-        Ok(())
-    }
 
     pub fn utterance(ctx: Context<OnBuilder>,msg :String) -> ProgramResult {
-        let ontology = &mut ctx.accounts.ontology_account.load_mut()?;
         let campaign = &mut ctx.accounts.campaign.load_mut()?;
         let pool = &mut ctx.accounts.pool.load_mut()?;
         let given_msg = msg.as_bytes();
         let mut data = [0u8; 256];
         data[..given_msg.len()].copy_from_slice(given_msg);
-        let last_id = ontology.add_utterance(Utterance{
+        let last_id = campaign.add_utterance(Utterance{
             builder :  ctx.accounts.builder.key(),
             validator : Pubkey::default(),
             validated: false,
@@ -126,11 +103,10 @@ pub mod contracts {
     }
     pub fn validate(ctx: Context<OnValidator>,utterance_id :u64, status : bool) -> ProgramResult
     {
-        let ontology = &mut ctx.accounts.ontology_account.load_mut()?;
         let campaign = &mut ctx.accounts.campaign.load_mut()?;
         let pool = &mut ctx.accounts.pool.load_mut()?;
         let validator = *ctx.accounts.validator.key;
-        ontology.update_utterance(utterance_id,status,validator);
+        campaign.update_utterance(utterance_id,status,validator);
         Ok(())
     }
     pub fn checkpy(ctx: Context<Python>) -> ProgramResult {
@@ -201,6 +177,9 @@ pub struct PoolAccount {
     pub admin: Pubkey,
     pub sns_mint: Pubkey,
     pub distribution_authority: Pubkey,
+    pub head: u64,
+    pub tail: u64,
+    pub campaigns : [Pubkey;1023],
     pub architect_stake:u64,
     pub builder_stake:u64,
     pub validator_stake:u64,
@@ -230,7 +209,7 @@ pub struct Auth<'info> {
 /// Fully Campaign Initialization
 #[derive(Accounts)]
 pub struct CreateCampaign<'info>  {
-    pub organizer: AccountInfo<'info>,
+    pub architect: AccountInfo<'info>,
     #[account(zero,signer)]
     pub campaign: Loader<'info, Campaign>,
     #[account(mut)]
@@ -243,22 +222,22 @@ pub struct Campaign {
     refID : u64,
     head: u64,
     tail: u64,
-    organizer : Pubkey,
+    architect : Pubkey,
+    architect_stake_amount : u64,
+    architect_stake_period : u64,
+    min_builder : u64,
+    min_validator :u64,
+    reward_per_builder : u64,
+    reward_per_validator : u64,
+    validation_quorum : u8,
+    reward_token : Pubkey,
+    utterances : [Utterance;256],
+    time_limit : u64,
     domain : [u8; 256],
     subject : [u8; 256],
     explain : [u8; 1024],
-    phrase : [u8; 1024],
-    architect : Pubkey,
-    title: [u8; 280],
-    description: [u8; 280],
-    minimum_builder : u64,
-    minimum_validation :u64,
-    time_limit : u64,
-    reward_per_utterance : u64,
-    mining_reward : u64,
-    validation_quorum : u8,
-    fixed_reward_apy : u8,
-    reward_token : Pubkey
+    phrase : [u8; 1024]
+
 }
 #[zero_copy]
 pub struct Utterance {
@@ -274,17 +253,26 @@ pub struct Validate {
     pub from: Pubkey,
     pub status: bool,
 }
-
+impl PoolAccount {
+    fn add_campaign(&mut self,campaign :Pubkey) -> u64 {
+        self.campaigns[Campaign::index_of(self.head)] = campaign;
+        if PoolAccount::index_of(self.head + 1) == PoolAccount::index_of(self.tail) {
+            self.tail += 1;
+        }
+        self.head += 1;
+        self.head
+    }
+    fn index_of(counter: u64) -> usize {
+        std::convert::TryInto::try_into(counter % 1023).unwrap()
+    }
+}
 impl Campaign {
     fn set_architect(&mut self,architect :  Pubkey )  {
         self.architect = architect;
     }
-    fn distribute_reward(&mut self, builder: Pubkey) {}
-}
-impl OntologyAccount{
     fn add_utterance(&mut self,utterance :Utterance) -> u64 {
-        self.utterances[OntologyAccount::index_of(self.head)] = utterance;
-        if OntologyAccount::index_of(self.head + 1) == OntologyAccount::index_of(self.tail) {
+        self.utterances[Campaign::index_of(self.head)] = utterance;
+        if Campaign::index_of(self.head + 1) == Campaign::index_of(self.tail) {
             self.tail += 1;
         }
         self.head += 1;
@@ -295,11 +283,17 @@ impl OntologyAccount{
         self.utterances[utterance_id as usize].is_valid = status;
         self.utterances[utterance_id as usize ].validator = validator;
     }
+    fn stake(&mut self, user :  Pubkey )  {
+
+    }
+    fn unstake(&mut self, user :  Pubkey )  {
+
+    }
+    fn distribute_reward(&mut self, builder: Pubkey) {}
     fn index_of(counter: u64) -> usize {
-        std::convert::TryInto::try_into(counter % 8).unwrap()
+        std::convert::TryInto::try_into(counter % 1023).unwrap()
     }
 }
-
 
 #[derive(Accounts)]
 pub struct OnBuilder<'info>{
@@ -309,8 +303,6 @@ pub struct OnBuilder<'info>{
     pub pool: Loader<'info, PoolAccount>,
    #[account(mut)]
     pub campaign: Loader<'info, Campaign>,
-    #[account(mut)]
-    pub ontology_account: Loader<'info, OntologyAccount>,
 }
 #[derive(Accounts)]
 pub struct OnValidator<'info>{
@@ -320,8 +312,6 @@ pub struct OnValidator<'info>{
     pub pool: Loader<'info, PoolAccount>,
     #[account(mut)]
     pub campaign: Loader<'info, Campaign>,
-    #[account(mut)]
-    pub ontology_account: Loader<'info, OntologyAccount>,
 }
 
 #[derive(Accounts)]
