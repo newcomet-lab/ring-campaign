@@ -80,7 +80,7 @@ pub mod contracts {
        // pool.add_campaign(ctx.accounts.campaign);
         emit!( SynEvent{
             kind : Events::CmapaginCreate,
-            user : Pubkey::default()
+            user : *ctx.accounts.architect.key
         });
         Ok(())
     }
@@ -98,7 +98,10 @@ pub mod contracts {
             is_valid: false,
             data
         });
-
+        emit!( SynEvent{
+            kind : Events::UtteranceSubmit,
+            user : ctx.accounts.builder.key()
+        });
         Ok(())
     }
     pub fn validate(ctx: Context<OnValidator>,utterance_id :u64, status : bool) -> ProgramResult
@@ -107,6 +110,10 @@ pub mod contracts {
         let pool = &mut ctx.accounts.pool.load_mut()?;
         let validator = *ctx.accounts.validator.key;
         campaign.update_utterance(utterance_id,status,validator);
+        emit!( SynEvent{
+            kind : Events::UtteranceValidate,
+            user : ctx.accounts.validator.key()
+        });
         Ok(())
     }
     pub fn checkpy(ctx: Context<Python>) -> ProgramResult {
@@ -192,7 +199,9 @@ pub struct PoolAccount {
 pub enum Events {
     PoolUpdate,
     CmapaginCreate,
-    OntologyCreate
+    OntologyCreate,
+    UtteranceSubmit,
+    UtteranceValidate
 }
 
 #[event]
