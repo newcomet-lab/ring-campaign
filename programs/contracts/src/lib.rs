@@ -79,7 +79,7 @@ pub mod contracts {
         pool.add_campaign(*ctx.accounts.architect.key);
        // pool.add_campaign(ctx.accounts.campaign);
         emit!( SynEvent{
-            kind : Events::CmapaginCreate.to_string(),
+            kind : Events::CmapaginCreate as u8,
             user : *ctx.accounts.architect.key
         });
         Ok(())
@@ -99,7 +99,7 @@ pub mod contracts {
             data
         });
         emit!( SynEvent{
-            kind : Events::UtteranceSubmit.to_string(),
+            kind : Events::UtteranceSubmit as u8,
             user : ctx.accounts.builder.key()
         });
         Ok(())
@@ -111,7 +111,7 @@ pub mod contracts {
         let validator = *ctx.accounts.validator.key;
         campaign.update_utterance(utterance_id,status,validator);
         emit!( SynEvent{
-            kind : Events::UtteranceValidate.to_string(),
+            kind : Events::UtteranceValidate as u8,
             user : ctx.accounts.validator.key()
         });
         Ok(())
@@ -206,7 +206,7 @@ pub enum Events {
 
 #[event]
 pub struct SynEvent {
-    pub kind: String,
+    pub kind: u8,
     pub user: Pubkey,
 }
 impl fmt::Display for Events {
