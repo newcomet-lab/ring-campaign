@@ -14,7 +14,7 @@ use anchor_lang::Loader;
 use anchor_lang::ZeroCopy;
 use anchor_lang::prelude::borsh::{BorshSerialize,BorshDeserialize};
 use std::io::Write;
-
+use std::fmt::{self, Debug, Display};
 declare_id!("GWzBR7znXxEVDkDVgQQu5Vpzu3a5G4e5kPXaE9MvebY2");
 const SMALL: usize = 256;
 const MEDIUM: usize = 1024;
@@ -79,7 +79,7 @@ pub mod contracts {
         pool.add_campaign(*ctx.accounts.architect.key);
        // pool.add_campaign(ctx.accounts.campaign);
         emit!( SynEvent{
-            kind : Events::CmapaginCreate,
+            kind : Events::CmapaginCreate.to_string(),
             user : *ctx.accounts.architect.key
         });
         Ok(())
@@ -99,7 +99,7 @@ pub mod contracts {
             data
         });
         emit!( SynEvent{
-            kind : Events::UtteranceSubmit,
+            kind : Events::UtteranceSubmit.to_string(),
             user : ctx.accounts.builder.key()
         });
         Ok(())
@@ -111,7 +111,7 @@ pub mod contracts {
         let validator = *ctx.accounts.validator.key;
         campaign.update_utterance(utterance_id,status,validator);
         emit!( SynEvent{
-            kind : Events::UtteranceValidate,
+            kind : Events::UtteranceValidate.to_string(),
             user : ctx.accounts.validator.key()
         });
         Ok(())
@@ -195,7 +195,7 @@ pub struct PoolAccount {
     pub pool_cap : u64,
     pub penalty : u64
 }
-#[derive(BorshSerialize, BorshDeserialize)]
+#[derive(BorshSerialize, BorshDeserialize,Debug)]
 pub enum Events {
     PoolUpdate,
     CmapaginCreate,
@@ -206,10 +206,14 @@ pub enum Events {
 
 #[event]
 pub struct SynEvent {
-    pub kind: Events,
+    pub kind: String,
     pub user: Pubkey,
 }
-
+impl fmt::Display for Events {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
 /// Structure for access list checking
 #[derive(Accounts)]
 pub struct Auth<'info> {
