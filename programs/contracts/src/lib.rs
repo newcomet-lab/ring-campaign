@@ -197,9 +197,9 @@ pub struct PoolAccount {
 }
 #[derive(BorshSerialize, BorshDeserialize,Debug)]
 pub enum Events {
+    PoolInit,
     PoolUpdate,
-    CmapaginCreate,
-    OntologyCreate,
+    CampaignCreate,
     UtteranceSubmit,
     UtteranceValidate
 }
