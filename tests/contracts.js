@@ -175,7 +175,7 @@ describe('contracts', () => {
         console.log("\tArchitects for campaign : ",campaignAddr.toBase58());
         console.log("\t\tis:", campaign.architect.toBase58());
     });
-    it("Get All Campaigna", async () => {
+    it("Get All Campaign", async () => {
         const pool = await program.account.poolAccount.fetch(admin.publicKey);
         let campaigns = pool.campaigns;
         for(let z=0; z<pool.head;z++){
@@ -184,7 +184,7 @@ describe('contracts', () => {
         }
     });
 
-    it("Submit Utterance to an ontology", async () => {
+    it("Submit 3 Utterance to an ontology", async () => {
         let utterance = "hello utterance";
         const pool = await program.account.poolAccount.fetch(admin.publicKey);
         const campaign = await program.account.campaign.fetch(architect.publicKey);

@@ -78,10 +78,7 @@ pub mod contracts {
         campaign.set_architect(*ctx.accounts.architect.key);
         pool.add_campaign(*ctx.accounts.architect.key);
        // pool.add_campaign(ctx.accounts.campaign);
-        emit!( SynEvent{
-            kind : Events::CmapaginCreate as u8,
-            user : *ctx.accounts.architect.key
-        });
+
         Ok(())
     }
 
@@ -98,10 +95,6 @@ pub mod contracts {
             is_valid: false,
             data
         });
-        emit!( SynEvent{
-            kind : Events::UtteranceSubmit as u8,
-            user : ctx.accounts.builder.key()
-        });
         Ok(())
     }
     pub fn validate(ctx: Context<OnValidator>,utterance_id :u64, status : bool) -> ProgramResult
@@ -110,9 +103,10 @@ pub mod contracts {
         let pool = &mut ctx.accounts.pool.load_mut()?;
         let validator = *ctx.accounts.validator.key;
         campaign.update_utterance(utterance_id,status,validator);
-        emit!( SynEvent{
-            kind : Events::UtteranceValidate as u8,
-            user : ctx.accounts.validator.key()
+        let utter = campaign.get_utterance(utterance_id) ;
+        emit!( ValidateEvent{
+            user : ctx.accounts.validator.key(),
+            data : utter
         });
         Ok(())
     }
@@ -208,6 +202,14 @@ pub enum Events {
 pub struct SynEvent {
     pub kind: u8,
     pub user: Pubkey,
+
+}
+
+#[event]
+pub struct ValidateEvent {
+    pub user: Pubkey,
+    pub data : Utterance
+
 }
 impl fmt::Display for Events {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -253,7 +255,9 @@ pub struct Campaign {
     phrase : [u8; 1024]
 
 }
+
 #[zero_copy]
+#[derive(BorshSerialize, BorshDeserialize,Debug)]
 pub struct Utterance {
     pub builder: Pubkey,
     pub validator :Pubkey,
@@ -296,6 +300,9 @@ impl Campaign {
         self.utterances[utterance_id as usize].validated = true;
         self.utterances[utterance_id as usize].is_valid = status;
         self.utterances[utterance_id as usize ].validator = validator;
+    }
+    fn get_utterance(&mut self,utterance_id :u64) -> Utterance{
+        self.utterances[utterance_id as usize].clone()
     }
     fn stake(&mut self, user :  Pubkey )  {
 
