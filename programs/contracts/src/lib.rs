@@ -17,11 +17,12 @@ use std::io::Write;
 use std::fmt::{self, Debug, Display};
 declare_id!("GWzBR7znXxEVDkDVgQQu5Vpzu3a5G4e5kPXaE9MvebY2");
 const SMALL: usize = 256;
-const MEDIUM: usize = 1024;
+const MEDIUM: usize = 512;
 
 #[program]
 pub mod contracts {
     use super::*;
+
     pub fn init_pool(ctx: Context<initPool>,
                      architect_stake:u64,
                      builder_stake:u64,
@@ -90,10 +91,12 @@ pub mod contracts {
         data[..given_msg.len()].copy_from_slice(given_msg);
         let last_id = campaign.add_utterance(Utterance{
             builder :  ctx.accounts.builder.key(),
-            validator : Pubkey::default(),
-            validated: false,
-            is_valid: false,
-            data
+            head: 0,
+            validators: [Pubkey::default();128],
+            data,
+            correct: 0,
+            incorrect: 0,
+            finish: false
         });
         Ok(())
     }
@@ -116,33 +119,8 @@ pub mod contracts {
     }
 }
 
-#[account(zero_copy)]
-pub struct OntologyAccount {
-    pub architect : Pubkey,
-    pub stake_amount : u64,
-    pub stake_period : u64,
-    pub head: u64,
-    pub tail: u64,
-    pub utterances : [Utterance;8],
-    pub validator : [Pubkey;3],
-    pub builder : [Pubkey;5],
-    pub pending_reward : u64,
-    pub ontology_status : bool,
-    pub campaign_ref: u64,
-    pub created_ts : u64
-}
 
-/// Account to be initialized by architect
-#[derive(Accounts)]
-pub struct InitOntology<'info> {
-    #[account(zero)]
-    pub ontology_account: Loader<'info, OntologyAccount>,
-    pub architect: AccountInfo<'info>,
-    #[account(mut)]
-    pub campaign: Loader<'info, Campaign>,
-    #[account(mut)]
-    pub pool: Loader<'info, PoolAccount>
-}
+
 // Prevent duplicate ontology per campaign
 fn check_campaign<'info>(
     campaign_account: &Loader<'info,Campaign>
@@ -175,20 +153,21 @@ pub struct updatePool<'info> {
 }
 /// Structure of pool initialization
 #[account(zero_copy)]
-pub struct PoolAccount {
-    pub admin: Pubkey,
-    pub sns_mint: Pubkey,
-    pub authority: Pubkey,
-    pub head: u64,
-    pub tail: u64,
-    pub campaigns : [Pubkey;1023],
-    pub architect_stake:u64,
-    pub builder_stake:u64,
-    pub validator_stake:u64,
-    pub reward_apy : u8,
-    pub pool_cap : u64,
-    pub penalty : u64
+pub struct PoolAccount {            // 8
+    pub admin: Pubkey,              // 32
+    pub sns_mint: Pubkey,           // 32
+    pub authority: Pubkey,          // 32
+    pub head: u64,                  // 8
+    pub tail: u64,                  // 8
+    pub campaigns : [Pubkey;512],  // 32x1024
+    pub architect_stake:u64,        // 8
+    pub builder_stake:u64,          // 8
+    pub validator_stake:u64,        // 8
+    pub reward_apy : u8,            // 1
+    pub pool_cap : u64,             // 8
+    pub penalty : u64               // 8
 }
+
 #[derive(BorshSerialize, BorshDeserialize,Debug)]
 pub enum Events {
     PoolInit,
@@ -247,12 +226,12 @@ pub struct Campaign {
     reward_per_validator : u64,
     validation_quorum : u8,
     reward_token : Pubkey,
-    utterances : [Utterance;256],
+    utterances : [Utterance;4096],
     time_limit : u64,
     domain : [u8; 256],
     subject : [u8; 256],
-    explain : [u8; 1024],
-    phrase : [u8; 1024]
+    explain : [u8; 512],
+    phrase : [u8; 512]
 
 }
 
@@ -260,10 +239,12 @@ pub struct Campaign {
 #[derive(BorshSerialize, BorshDeserialize,Debug)]
 pub struct Utterance {
     pub builder: Pubkey,
-    pub validator :Pubkey,
+    pub head : u64,
+    pub validators :[Pubkey;128],
     pub data: [u8; 256],
-    pub validated :bool,
-    pub is_valid : bool
+    pub correct : u64,
+    pub incorrect : u64,
+    pub finish : bool
 }
 
 #[zero_copy]
@@ -297,9 +278,23 @@ impl Campaign {
         self.head
     }
     fn update_utterance(&mut self,utterance_id :u64,status:bool,validator: Pubkey) {
-        self.utterances[utterance_id as usize].validated = true;
-        self.utterances[utterance_id as usize].is_valid = status;
-        self.utterances[utterance_id as usize ].validator = validator;
+        match status {
+            true => {
+                self.utterances[utterance_id as usize].correct +=1 ;
+            },
+            false => {
+                self.utterances[utterance_id as usize].incorrect +=1 ;
+            }
+        }
+        self.utterances[utterance_id as usize ].validators[self.utterances[utterance_id as usize ].head as usize] = validator;
+        self.utterances[utterance_id as usize ].head += 1;
+        match self.min_validator {
+            x if x >= self.utterances[utterance_id as usize ].correct  =>  {
+                self.utterances[utterance_id as usize ].finish == true;
+            },
+            _ => {}
+        }
+
     }
     fn get_utterance(&mut self,utterance_id :u64) -> Utterance{
         self.utterances[utterance_id as usize].clone()
