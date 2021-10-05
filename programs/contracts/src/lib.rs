@@ -78,8 +78,6 @@ pub mod contracts {
         campaign.validation_quorum = validation_quorum;
         campaign.set_architect(*ctx.accounts.architect.key);
         pool.add_campaign(*ctx.accounts.architect.key);
-       // pool.add_campaign(ctx.accounts.campaign);
-
         Ok(())
     }
 
@@ -208,7 +206,13 @@ pub struct CreateCampaign<'info>  {
     #[account(zero,signer)]
     pub campaign: Loader<'info, Campaign>,
     #[account(mut)]
-    pub pool: Loader<'info, PoolAccount>
+    pub pool: Loader<'info, PoolAccount>,
+/*    pub sns_mint:  Account<'info, Mint>,
+    #[account(mut,
+    constraint = &user_sns.mint == sns_mint.to_account_info().key,
+    constraint = &user_sns.owner == signer.key
+    )]
+    pub user_sns: Account<'info, TokenAccount>,*/
 }
 
 /// Campaign Structure
