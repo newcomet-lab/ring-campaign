@@ -68,7 +68,7 @@ pub mod contracts {
         };
         let cpi_program = ctx.accounts.token_program.clone();
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
-        let stake_amount = pool.architect_stake.checked_mul(1000).unwrap() ;
+        let stake_amount = pool.architect_stake.checked_mul(1000_000_000).unwrap() ;
         token::transfer(cpi_ctx, stake_amount)?;
         let campaign = &mut ctx.accounts.campaign.load_init()?;
         campaign.reward_token = pool.sns_mint;
@@ -118,31 +118,7 @@ pub mod contracts {
         });
         Ok(())
     }
-    pub fn stake(ctx: Context<InitStake>,role : u8) -> ProgramResult {
-        let pool = &mut ctx.accounts.pool.load_mut()?;
-        let cpi_accounts = Transfer {
-            from: ctx.accounts.token_account.to_account_info(),
-            to: ctx.accounts.pool_vault.to_account_info(),
-            authority: ctx.accounts.user.clone(),
-        };
-        let cpi_program = ctx.accounts.token_program.clone();
-        let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
-        let stake_amount = match role {
-            1 => pool.architect_stake,
-            2 => pool.builder_stake,
-            3 => pool.validator_stake,
-            _ => { 0 }
-        }.checked_mul(1000).unwrap();
-        token::transfer(cpi_ctx, stake_amount).unwrap();
 
-        let staker = &mut ctx.accounts.stake_account.load_init()?;
-        staker.stake_amount = stake_amount ;
-        staker.pending_reward = 0 ;
-        staker.user = ctx.accounts.user.key();
-        staker.stake_start =  ctx.accounts.clock.unix_timestamp;
-        staker.role = role;
-        Ok(())
-    }
 }
 
 
@@ -159,31 +135,6 @@ fn check_campaign<'info>(
     }
 }
 
-#[derive(Accounts)]
-pub struct InitStake<'info> {
-    #[account(zero,signer)]
-    pub stake_account: Loader<'info, Staker>,
-    #[account(signer)]
-    pub user: AccountInfo<'info>,
-    #[account(mut)]
-    pub pool: Loader<'info, PoolAccount>,
-    #[account(mut)]
-    pub token_account: AccountInfo<'info>,
-    #[account(mut)]
-    pub pool_vault: CpiAccount<'info, TokenAccount>,
-    pub sns_mint:  CpiAccount<'info,Mint>,
-    #[account("token_program.key == &token::ID")]
-    token_program: AccountInfo<'info>,
-    clock: Sysvar<'info, Clock>,
-}
-#[account(zero_copy)]
-pub struct Staker {
-    pub role: u8,
-    pub user: Pubkey,
-    pub stake_amount : u64,
-    pub stake_start : i64,
-    pub pending_reward : u64,
-}
 /// Pool Initialization accounts and set authority
 #[derive(Accounts)]
 pub struct initPool<'info> {

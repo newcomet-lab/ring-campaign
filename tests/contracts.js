@@ -24,27 +24,15 @@ const ks_owner = fs.readFileSync("/home/hadi/.config/solana/devnet.json", {encod
 const kb_owner = Buffer.from(JSON.parse(ks_owner));
 let owner = new anchor.web3.Account(kb_owner);
 
-const ks_architect = fs.readFileSync("tests/helper/architect.json", {encoding: 'utf8'});
-const kb_architect = Buffer.from(JSON.parse(ks_architect));
-let architect = new anchor.web3.Account(kb_architect);
-
-const ks_builder = fs.readFileSync("tests/helper/builder.json", {encoding: 'utf8'});
-const kb_builder = Buffer.from(JSON.parse(ks_builder));
-let builder = new anchor.web3.Account(kb_builder);
-
-
-const ks_validator = fs.readFileSync("tests/helper/validator.json", {encoding: 'utf8'});
-const kb_validator = Buffer.from(JSON.parse(ks_validator));
-let validator = new anchor.web3.Account(kb_validator);
-
-const ks_admin = fs.readFileSync("tests/helper/admin.json", {encoding: 'utf8'});
-const kb_admin = Buffer.from(JSON.parse(ks_admin));
-let admin = new anchor.web3.Account(kb_admin);
 
 const user = anchor.web3.Keypair.generate();
+const admin = anchor.web3.Keypair.generate();
 const customer = anchor.web3.Keypair.generate();
 const customerB = anchor.web3.Keypair.generate();
+const architect = anchor.web3.Keypair.generate();
 const architectB = anchor.web3.Keypair.generate();
+const builder = anchor.web3.Keypair.generate();
+const validator = anchor.web3.Keypair.generate();
 const new_authority = anchor.web3.Keypair.generate();
 
 let architectToken = undefined;
@@ -124,44 +112,7 @@ describe('contracts', () => {
         assert.ok(pool.rewardApy === newApy);
         assert.ok(previous_pool.rewardApy !== pool.rewardApy);
     }).timeout(20000);
-    it("SOl Airdrop to architect", async () => {
-        let txs = new anchor.web3.Transaction().add(
-            anchor.web3.SystemProgram.transfer({
-                fromPubkey: owner.publicKey,
-                toPubkey: architect.publicKey,
-                lamports: anchor.web3.LAMPORTS_PER_SOL ,
-            })
-        );
-        // Sign transaction, broadcast, and confirm
-        let signature = await anchor.web3.sendAndConfirmTransaction(
-            provider.connection,
-            txs,
-            [owner]
-        );
-    }).timeout(20000);
-/*    it("Architect stake to pool", async () => {
 
-        const pool = await program.account.poolAccount.fetch(admin.publicKey);
-        let role = 1 ;
-        const  transaction =  await program.rpc.stake(role,
-            {
-                accounts: {
-                    stakeAccount: architect.publicKey,
-                    user: architect.publicKey,
-                    pool :admin.publicKey,
-                    tokenAccount: architectToken.address,
-                    poolVault : poolVault.address,
-                    snsMint : mint.publicKey,
-                    tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
-                    clock: anchor.web3.SYSVAR_CLOCK_PUBKEY
-                },
-                signers: [architect],
-                instructions: [
-                    await program.account.stakeAccount.createInstruction(architect),
-                ],
-            });
-        assert.ok(true);
-    }).timeout(20000);*/
     it("Create Campaign by architect", async () => {
         const pool = await program.account.poolAccount.fetch(admin.publicKey);
         const offChainReference = new anchor.BN(1213);
