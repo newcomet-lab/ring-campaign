@@ -1,15 +1,14 @@
 #![feature(trivial_bounds)]
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self as spl_token, Mint,MintTo,Burn, TokenAccount, Transfer};
+use anchor_spl::token::{self , Mint,MintTo,Burn, TokenAccount, Transfer};
 use anchor_lang::solana_program;
 use anchor_lang::solana_program::account_info::Account;
 use anchor_lang::solana_program::instruction::Instruction;
-use anchor_lang::solana_program::program;
 use anchor_lang::solana_program::program_option::COption;
 use anchor_lang::solana_program::pubkey::{
     ParsePubkeyError, Pubkey, PubkeyError, MAX_SEEDS, MAX_SEED_LEN, PUBKEY_BYTES,
 };
-//use anchor_spl::token::ID;
+
 use anchor_lang::Loader;
 use anchor_lang::ZeroCopy;
 use anchor_lang::prelude::borsh::{BorshSerialize,BorshDeserialize};
@@ -48,7 +47,6 @@ pub mod contracts {
         pool.reward_apy = apy ;
         Ok(())
     }
-
     pub fn create_campaign(ctx: Context<CreateCampaign>,
                            off_chain_reference: u64,
                            period : u64,
@@ -63,6 +61,15 @@ pub mod contracts {
                            phrase:String
     ) -> ProgramResult {
         let pool = &mut ctx.accounts.pool.load_mut()?;
+        let cpi_accounts = Transfer {
+            from: ctx.accounts.architect_token.to_account_info(),
+            to: ctx.accounts.pool_vault.to_account_info(),
+            authority: ctx.accounts.architect.clone(),
+        };
+        let cpi_program = ctx.accounts.token_program.clone();
+        let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+        let stake_amount = pool.architect_stake.checked_mul(1000).unwrap() ;
+        token::transfer(cpi_ctx, stake_amount)?;
         let campaign = &mut ctx.accounts.campaign.load_init()?;
         campaign.reward_token = pool.sns_mint;
         campaign.refID = off_chain_reference;
@@ -90,7 +97,7 @@ pub mod contracts {
         let last_id = campaign.add_utterance(Utterance{
             builder :  ctx.accounts.builder.key(),
             head: 0,
-            validators: [Pubkey::default();128],
+            validators: [Pubkey::default();16],
             data,
             correct: 0,
             incorrect: 0,
@@ -111,8 +118,29 @@ pub mod contracts {
         });
         Ok(())
     }
-    pub fn checkpy(ctx: Context<Python>) -> ProgramResult {
-        msg!("called me from python");
+    pub fn stake(ctx: Context<InitStake>,role : u8) -> ProgramResult {
+        let pool = &mut ctx.accounts.pool.load_mut()?;
+        let cpi_accounts = Transfer {
+            from: ctx.accounts.token_account.to_account_info(),
+            to: ctx.accounts.pool_vault.to_account_info(),
+            authority: ctx.accounts.user.clone(),
+        };
+        let cpi_program = ctx.accounts.token_program.clone();
+        let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+        let stake_amount = match role {
+            1 => pool.architect_stake,
+            2 => pool.builder_stake,
+            3 => pool.validator_stake,
+            _ => { 0 }
+        }.checked_mul(1000).unwrap();
+        token::transfer(cpi_ctx, stake_amount).unwrap();
+
+        let staker = &mut ctx.accounts.stake_account.load_init()?;
+        staker.stake_amount = stake_amount ;
+        staker.pending_reward = 0 ;
+        staker.user = ctx.accounts.user.key();
+        staker.stake_start =  ctx.accounts.clock.unix_timestamp;
+        staker.role = role;
         Ok(())
     }
 }
@@ -131,8 +159,31 @@ fn check_campaign<'info>(
     }
 }
 
-
-
+#[derive(Accounts)]
+pub struct InitStake<'info> {
+    #[account(zero,signer)]
+    pub stake_account: Loader<'info, Staker>,
+    #[account(signer)]
+    pub user: AccountInfo<'info>,
+    #[account(mut)]
+    pub pool: Loader<'info, PoolAccount>,
+    #[account(mut)]
+    pub token_account: AccountInfo<'info>,
+    #[account(mut)]
+    pub pool_vault: CpiAccount<'info, TokenAccount>,
+    pub sns_mint:  CpiAccount<'info,Mint>,
+    #[account("token_program.key == &token::ID")]
+    token_program: AccountInfo<'info>,
+    clock: Sysvar<'info, Clock>,
+}
+#[account(zero_copy)]
+pub struct Staker {
+    pub role: u8,
+    pub user: Pubkey,
+    pub stake_amount : u64,
+    pub stake_start : i64,
+    pub pending_reward : u64,
+}
 /// Pool Initialization accounts and set authority
 #[derive(Accounts)]
 pub struct initPool<'info> {
@@ -202,17 +253,30 @@ pub struct Auth<'info> {
 /// Fully Campaign Initialization
 #[derive(Accounts)]
 pub struct CreateCampaign<'info>  {
+    #[account(signer)]
     pub architect: AccountInfo<'info>,
     #[account(zero,signer)]
     pub campaign: Loader<'info, Campaign>,
     #[account(mut)]
     pub pool: Loader<'info, PoolAccount>,
-/*    pub sns_mint:  Account<'info, Mint>,
-    #[account(mut,
-    constraint = &user_sns.mint == sns_mint.to_account_info().key,
-    constraint = &user_sns.owner == signer.key
-    )]
-    pub user_sns: Account<'info, TokenAccount>,*/
+    #[account(mut)]
+    pub pool_vault: CpiAccount<'info, TokenAccount>,
+    pub sns_mint:  CpiAccount<'info,Mint>,
+    #[account(mut)]
+    pub architect_token:  CpiAccount<'info,TokenAccount>,
+    #[account("token_program.key == &token::ID")]
+    token_program: AccountInfo<'info>,
+}
+impl<'a, 'b, 'c, 'info> From<&CreateCampaign<'info>> for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
+    fn from(accounts: &CreateCampaign<'info>) -> CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: accounts.architect_token.to_account_info(),
+            to: accounts.pool_vault.to_account_info(),
+            authority: accounts.architect.to_account_info(),
+        };
+        let cpi_program = accounts.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
 }
 
 /// Campaign Structure
@@ -230,13 +294,13 @@ pub struct Campaign {
     reward_per_validator : u64,
     validation_quorum : u8,
     reward_token : Pubkey,
-    utterances : [Utterance;4096],
+    utterances : [Utterance;512],
     time_limit : u64,
+    init_limit : u64,
     domain : [u8; 256],
     subject : [u8; 256],
     explain : [u8; 512],
     phrase : [u8; 512]
-
 }
 
 #[zero_copy]
@@ -244,7 +308,7 @@ pub struct Campaign {
 pub struct Utterance {
     pub builder: Pubkey,
     pub head : u64,
-    pub validators :[Pubkey;128],
+    pub validators :[Pubkey;16],
     pub data: [u8; 256],
     pub correct : u64,
     pub incorrect : u64,
@@ -266,7 +330,7 @@ impl PoolAccount {
         self.head
     }
     fn index_of(counter: u64) -> usize {
-        std::convert::TryInto::try_into(counter % 1023).unwrap()
+        std::convert::TryInto::try_into(counter % 512).unwrap()
     }
 }
 impl Campaign {
@@ -311,7 +375,7 @@ impl Campaign {
     }
     fn distribute_reward(&mut self, builder: Pubkey) {}
     fn index_of(counter: u64) -> usize {
-        std::convert::TryInto::try_into(counter % 1023).unwrap()
+        std::convert::TryInto::try_into(counter % 512).unwrap()
     }
 }
 

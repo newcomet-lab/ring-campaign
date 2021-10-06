@@ -1,23 +1,30 @@
 const anchor = require("@project-serum/anchor");
 const common = require("@project-serum/common");
-const { TOKEN_PROGRAM_ID, Token } = require("@solana/spl-token");
 const { BN } = anchor;
 const { Keypair, PublicKey, SystemProgram, Transaction } = anchor.web3;
+const splToken = require('@solana/spl-token');
 
-const getMint = async ({ provider, name }) => {
-    const decimals = 6;
-    const amount = new anchor.BN(1_000_000_000_000_000);
+const Token = require("@solana/spl-token").Token;
+const TOKEN_PROGRAM_ID = require("@solana/spl-token").TOKEN_PROGRAM_ID;
+const TokenInstructions = require("@project-serum/serum").TokenInstructions;
 
-    const [mint, god] = await common.createMintAndVault(
-        provider,
-        amount,
-        undefined,
-        decimals
+const  userCharge = async ( mint, owner,authority) => {
+    const tokenAccount  = await mint.getOrCreateAssociatedAccountInfo(owner.publicKey);
+
+    await mint.mintTo(
+        tokenAccount.address,
+        authority,
+        [],
+        1000_000_000_000 // 1 followed by decimals number of 0s // You'll ask the creator ki how many decimals he wants in his token. If he says 4, then 1 token will be represented as 10000
     );
-
-    return { mint, god, amount, decimals, name };
+   const account = await mint.getOrCreateAssociatedAccountInfo(owner.publicKey);
+   return account
 };
 
+const  poolVaultGen = async ( mint, owner,authority) => {
+    const tokenAccount  = await mint.getOrCreateAssociatedAccountInfo(owner.publicKey);
+    return tokenAccount
+};
 module.exports = {
-    getMint
+    userCharge,poolVaultGen
 };

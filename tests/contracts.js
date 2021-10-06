@@ -2,8 +2,9 @@ const anchor = require("@project-serum/anchor");
 const assert = require("assert");
 const fs = require("fs");
 const {PublicKey} = require("@solana/web3.js");
-const {getMint} = require("./helper");
-
+const {userCharge,poolVaultGen} = require("./helper");
+const splToken = require('@solana/spl-token');
+const TokenInstructions = require("@project-serum/serum").TokenInstructions;
 anchor.setProvider(anchor.Provider.local("https://api.devnet.solana.com"));
 const idl = JSON.parse(
     require('fs')
@@ -12,24 +13,45 @@ const idl = JSON.parse(
 const programId = new anchor.web3.PublicKey("GWzBR7znXxEVDkDVgQQu5Vpzu3a5G4e5kPXaE9MvebY2");
 const provider = anchor.getProvider();
 const program = new anchor.Program(idl, programId, provider);
-const SNS = new anchor.web3.PublicKey("51LAPRbcEvheteGQjSgAFV6rrEvjL4P2igvzPH8bu88");
+const SNS = new anchor.web3.PublicKey("4x9tT6a8hjs6YztPJs9ZHUimQaxBetVFYTsDAAfh8Luz");
 
 
 const ks_hadi = fs.readFileSync("/home/hadi/.config/solana/id.json", {encoding: 'utf8'});
 const kb_hadi = Buffer.from(JSON.parse(ks_hadi));
 let hadi = new anchor.web3.Account(kb_hadi);
 
+const ks_owner = fs.readFileSync("/home/hadi/.config/solana/devnet.json", {encoding: 'utf8'});
+const kb_owner = Buffer.from(JSON.parse(ks_owner));
+let owner = new anchor.web3.Account(kb_owner);
+
+const ks_architect = fs.readFileSync("tests/helper/architect.json", {encoding: 'utf8'});
+const kb_architect = Buffer.from(JSON.parse(ks_architect));
+let architect = new anchor.web3.Account(kb_architect);
+
+const ks_builder = fs.readFileSync("tests/helper/builder.json", {encoding: 'utf8'});
+const kb_builder = Buffer.from(JSON.parse(ks_builder));
+let builder = new anchor.web3.Account(kb_builder);
+
+
+const ks_validator = fs.readFileSync("tests/helper/validator.json", {encoding: 'utf8'});
+const kb_validator = Buffer.from(JSON.parse(ks_validator));
+let validator = new anchor.web3.Account(kb_validator);
+
+const ks_admin = fs.readFileSync("tests/helper/admin.json", {encoding: 'utf8'});
+const kb_admin = Buffer.from(JSON.parse(ks_admin));
+let admin = new anchor.web3.Account(kb_admin);
+
 const user = anchor.web3.Keypair.generate();
-const admin = anchor.web3.Keypair.generate();
 const customer = anchor.web3.Keypair.generate();
 const customerB = anchor.web3.Keypair.generate();
-const architect = anchor.web3.Keypair.generate();
 const architectB = anchor.web3.Keypair.generate();
-const builder = anchor.web3.Keypair.generate();
-const validator = anchor.web3.Keypair.generate();
 const new_authority = anchor.web3.Keypair.generate();
 
-
+let architectToken = undefined;
+let builderToken = undefined;
+let validatorToken = undefined;
+let mint= undefined;
+let poolVault= undefined;
 describe('contracts', () => {
     it("log users", async () => {
         console.log("\thadi: ", hadi.publicKey.toBase58());
@@ -39,7 +61,21 @@ describe('contracts', () => {
         console.log("\tvalidator : ",validator.publicKey.toBase58());
         console.log("\tcustomer : ",customer.publicKey.toBase58());
         assert.ok(true);
-    });
+    }).timeout(90000);
+    it("Airdrop SNS token to users", async () => {
+        mint = await splToken.Token.createMint(provider.connection,owner, owner.publicKey, null, 9,  splToken.TOKEN_PROGRAM_ID,)
+        console.log('\tSNS Token public address: ' + mint.publicKey.toBase58());
+        architectToken  = await userCharge(mint,architect,owner);
+        builderToken  = await userCharge(mint,builder,owner);
+        validatorToken  = await userCharge(mint,validator,owner);
+        poolVault  = await poolVaultGen(mint,owner,owner);
+        console.log("\tarchitect have ",architectToken.amount/1000000000," SNS");
+        console.log("\tbuilder have ",builderToken.amount/1000000000," SNS");
+        console.log("\tvalidator have ",validatorToken.amount/1000000000," SNS");
+        assert.ok(architect.publicKey.equals(architectToken.owner));
+        assert.ok(builder.publicKey.equals(builderToken.owner));
+        assert.ok(validator.publicKey.equals(validatorToken.owner));
+    }).timeout(90000);
     it("Creates Mining Pool", async () => {
         const architect_stake = new anchor.BN(20) ;
         const builder_stake = new anchor.BN(20) ;
@@ -55,14 +91,14 @@ describe('contracts', () => {
                 accounts: {
                     poolAccount : admin.publicKey,
                     poolAuthority: user.publicKey,
-                    sns : SNS
+                    sns : mint.publicKey
                 },
             signers: [admin],
             instructions: [await program.account.poolAccount.createInstruction(admin)],
 
         });
         const pool = await program.account.poolAccount.fetch(admin.publicKey);
-        assert.ok(pool.snsMint.equals(SNS));
+        assert.ok(pool.snsMint.equals(mint.publicKey));
         assert.ok(pool.authority.equals(user.publicKey));
         assert.ok(pool.architectStake.eq(architect_stake));
         assert.ok(pool.builderStake.eq(builder_stake));
@@ -83,9 +119,49 @@ describe('contracts', () => {
                 signers: [admin]
             });
         const pool = await program.account.poolAccount.fetch(admin.publicKey);
+        const pooladdress = await program.account.poolAccount.associatedAddress(admin.publicKey);
+
         assert.ok(pool.rewardApy === newApy);
         assert.ok(previous_pool.rewardApy !== pool.rewardApy);
     }).timeout(20000);
+    it("SOl Airdrop to architect", async () => {
+        let txs = new anchor.web3.Transaction().add(
+            anchor.web3.SystemProgram.transfer({
+                fromPubkey: owner.publicKey,
+                toPubkey: architect.publicKey,
+                lamports: anchor.web3.LAMPORTS_PER_SOL ,
+            })
+        );
+        // Sign transaction, broadcast, and confirm
+        let signature = await anchor.web3.sendAndConfirmTransaction(
+            provider.connection,
+            txs,
+            [owner]
+        );
+    }).timeout(20000);
+/*    it("Architect stake to pool", async () => {
+
+        const pool = await program.account.poolAccount.fetch(admin.publicKey);
+        let role = 1 ;
+        const  transaction =  await program.rpc.stake(role,
+            {
+                accounts: {
+                    stakeAccount: architect.publicKey,
+                    user: architect.publicKey,
+                    pool :admin.publicKey,
+                    tokenAccount: architectToken.address,
+                    poolVault : poolVault.address,
+                    snsMint : mint.publicKey,
+                    tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
+                    clock: anchor.web3.SYSVAR_CLOCK_PUBKEY
+                },
+                signers: [architect],
+                instructions: [
+                    await program.account.stakeAccount.createInstruction(architect),
+                ],
+            });
+        assert.ok(true);
+    }).timeout(20000);*/
     it("Create Campaign by architect", async () => {
         const pool = await program.account.poolAccount.fetch(admin.publicKey);
         const offChainReference = new anchor.BN(1213);
@@ -116,7 +192,12 @@ describe('contracts', () => {
                 accounts: {
                     campaign: architect.publicKey,
                     architect: architect.publicKey,
-                    pool: admin.publicKey
+                    pool: admin.publicKey,
+                    architectToken : architectToken.address,
+                    snsMint : mint.publicKey ,
+                    poolVault : poolVault.address,
+                    tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
+
                 },
                 instructions: [
                     await program.account.campaign.createInstruction(architect),
@@ -128,7 +209,7 @@ describe('contracts', () => {
         console.log("\tcampaign address ",campaignAddr.toBase58());
         assert.ok(campaign.minBuilder.eq(min_builder));
     }).timeout(20000);
-    it("Create Campaign by architectB", async () => {
+   /* it("Create Campaign by architectB", async () => {
         const pool = await program.account.poolAccount.fetch(admin.publicKey);
         const offChainReference = new anchor.BN(1213);
         const period = new anchor.BN(14) ;
@@ -182,7 +263,7 @@ describe('contracts', () => {
             const campaignAddr = await program.account.campaign.associatedAddress(campaigns[z]);
             console.log("\tarchitect ",campaigns[z].toBase58(),"\tcreated campaign ",campaignAddr.toBase58());
         }
-    });
+    }).timeout(90000);
 
     it("Submit 3 Utterance to an ontology", async () => {
         let utterance = "hello utterance";
@@ -269,6 +350,6 @@ describe('contracts', () => {
             }
 
         }
-    }).timeout(90000);
+    }).timeout(90000);*/
 });
 
