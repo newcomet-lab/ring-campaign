@@ -14,55 +14,33 @@ pub mod Datafarm {
     use super::*;
 
     const CONTRACT_PDA_SEED: &[u8] = b"synesis";
-    #[state]
-    pub struct Pool {
-       // pub sns_mint: Pubkey,
-      //  pub token_vault: Pubkey,
-        pub authority: Pubkey,
-  /*      pub head: u64,
-        pub tail: u64,
-        //pub campaigns: [Pubkey; 512],
-        pub min_architect_stake: u64,
-        pub min_builder_stake: u64,
-        pub min_validator_stake: u64,
-        pub reward_apy: u8,
-        pub pool_cap: u64,
-        pub penalty: u64,
-        pub nonce : u8*/
-    }
-    impl Pool {
-        pub fn new(ctx: Context<Ctor>
-                /*   min_architect_stake: u64,
-                   min_builder_stake: u64,
-                   min_validator_stake: u64,
-                   reward_apy: u8,
-                   pool_cap: u64,
-                   penalty: u64,
-                   nonce : u8*/
-        ) -> Result<Self, ProgramError> {
-            Ok(Pool {
-              //  sns_mint: ctx.accounts.sns_mint.key(),
-               // token_vault: ctx.accounts.token_vault.key(),
-                authority: ctx.accounts.authority.key(),
-    /*            head: 0,
-                tail: 0,
-               // campaigns: [Pubkey::default();512],
-                min_architect_stake : 0,
-                min_builder_stake : 0,
-                min_validator_stake:0,
-                reward_apy:0,
-                pool_cap:0,
-                penalty:0,
-                nonce*/
-            })
-        }
-        pub fn update_pool( &mut self,ctx: Context<updatePool>, apy: u8, authority: Pubkey) -> ProgramResult {
-            self.authority = authority;
-            //self.reward_apy = apy;
-            Ok(())
-        }
+    pub fn init_pool(
+        ctx: Context<initPool>,
+        architect_stake: u64,
+        builder_stake: u64,
+        validator_stake: u64,
+        reward_apy: u8,
+        pool_cap: u64,
+        penalty: u64,
+    ) -> ProgramResult {
+        let pool = &mut ctx.accounts.pool_account.load_init()?;
+        pool.sns_mint = *ctx.accounts.sns.key;
+        pool.authority = *ctx.accounts.pool_authority.key;
+        pool.reward_apy = reward_apy;
+        pool.penalty = penalty;
+        pool.pool_cap = pool_cap;
+        pool.architect_stake = architect_stake;
+        pool.builder_stake = builder_stake;
+        pool.validator_stake = validator_stake;
+        Ok(())
     }
 
+    pub fn update_pool(ctx: Context<updatePool>, apy: u8, authority: Pubkey) -> ProgramResult {
+        let pool = &mut ctx.accounts.pool_account.load_mut()?;
+        pool.authority = authority;
+        pool.reward_apy = apy;
+        Ok(())
+    }
     //#[access_control(CreateCampaign::accounts(&ctx, nonce))]
     pub fn create_campaign(
         ctx: Context<CreateCampaign>,
@@ -157,6 +135,8 @@ pub struct initPool<'info> {
 /// Account to update pool authority
 #[derive(Accounts)]
 pub struct updatePool<'info> {
+    #[account(mut)]
+    pub pool_account: Loader<'info, PoolAccount>,
     #[account(signer)]
     pub authority: AccountInfo<'info>,
 }
@@ -235,6 +215,7 @@ pub struct CreateCampaign<'info> {
     campaign_account: Loader<'info, CampaignAccount>,
     #[account(signer)]
     architect: AccountInfo<'info>,
+    #[account(mut)]
     pool: Loader<'info, PoolAccount>,
     #[account("token_program.key == &token::ID")]
     token_program: AccountInfo<'info>,
