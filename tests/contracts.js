@@ -1,4 +1,5 @@
-const anchor = require("@project-serum/anchor");
+const anchor = require('@project-serum/anchor');
+
 const assert = require("assert");
 const fs = require("fs");
 const {SYSVAR_RENT_PUBKEY,
@@ -7,11 +8,12 @@ const {SYSVAR_RENT_PUBKEY,
     SystemProgram,} = require("@solana/web3.js");
 const {userCharge,poolVaultGen} = require("./helper");
 const splToken = require('@solana/spl-token');
+const {sleep} = require("@project-serum/common");
 const TokenInstructions = require("@project-serum/serum").TokenInstructions;
-anchor.setProvider(anchor.Provider.local("https://api.devnet.solana.com"));
+/*anchor.setProvider(anchor.Provider.local("https://api.devnet.solana.com"));
 const data_idl = JSON.parse(
     require('fs')
-        .readFileSync('target/idl/datafarm.json', 'utf8')
+        .readFileSync('target/idl/contracts.json', 'utf8')
         .toString())
 const staking_idl = JSON.parse(
     require('fs')
@@ -20,37 +22,51 @@ const staking_idl = JSON.parse(
 const dataId = new anchor.web3.PublicKey("GWzBR7znXxEVDkDVgQQu5Vpzu3a5G4e5kPXaE9MvebY2");
 const stakingId = new anchor.web3.PublicKey("HgaSDFf4Vc9gWajXhNCFaAC1epszwqS2zzbAhuJpA5Ev");
 const provider = anchor.getProvider();
-const dataProgram = new anchor.Program(data_idl, dataId, provider);
-const stakingProgram = new anchor.Program(staking_idl, stakingId, provider);
-const SNS = new anchor.web3.PublicKey("4x9tT6a8hjs6YztPJs9ZHUimQaxBetVFYTsDAAfh8Luz");
+const dataProgram = new anchor.Program(data_idl, data_idl.metadata.address, provider);
+const stakingProgram = new anchor.Program(staking_idl, staking_idl.metadata.address, provider);*/
 
-
-const ks_hadi = fs.readFileSync("/home/hadi/.config/solana/id.json", {encoding: 'utf8'});
-const kb_hadi = Buffer.from(JSON.parse(ks_hadi));
-let hadi = new anchor.web3.Account(kb_hadi);
-
-const ks_owner = fs.readFileSync("/home/hadi/.config/solana/devnet.json", {encoding: 'utf8'});
-const kb_owner = Buffer.from(JSON.parse(ks_owner));
-let owner = new anchor.web3.Account(kb_owner);
-
-
-const user = anchor.web3.Keypair.generate();
-const admin = anchor.web3.Keypair.generate();
-const customer = anchor.web3.Keypair.generate();
-const customerB = anchor.web3.Keypair.generate();
-const architect = anchor.web3.Keypair.generate();
-const architectB = anchor.web3.Keypair.generate();
-const builder = anchor.web3.Keypair.generate();
-const validator = anchor.web3.Keypair.generate();
-const new_authority = anchor.web3.Keypair.generate();
-
-let architectToken = undefined;
-let architecBtToken = undefined;
-let builderToken = undefined;
-let validatorToken = undefined;
-let mint= undefined;
-let poolVault= undefined;
 describe('datafarm', () => {
+    anchor.setProvider(anchor.Provider.env());
+    const provider = anchor.getProvider();
+    const SNS = new anchor.web3.PublicKey("4x9tT6a8hjs6YztPJs9ZHUimQaxBetVFYTsDAAfh8Luz");
+    const data_idl = JSON.parse(
+        require('fs')
+            .readFileSync('target/idl/Datafarm.json', 'utf8')
+            .toString())
+    const staking_idl = JSON.parse(
+        require('fs')
+            .readFileSync('target/idl/Staking.json', 'utf8')
+            .toString());
+    const dataProgram =new anchor.Program(data_idl, data_idl.metadata.address, anchor.getProvider());
+    const stakingProgram =new anchor.Program(staking_idl, staking_idl.metadata.address, anchor.getProvider());
+
+
+    const ks_hadi = fs.readFileSync("/home/hadi/.config/solana/id.json", {encoding: 'utf8'});
+    const kb_hadi = Buffer.from(JSON.parse(ks_hadi));
+    let hadi = new anchor.web3.Account(kb_hadi);
+
+    const ks_owner = fs.readFileSync("/home/hadi/.config/solana/devnet.json", {encoding: 'utf8'});
+    const kb_owner = Buffer.from(JSON.parse(ks_owner));
+    let owner = new anchor.web3.Account(kb_owner);
+
+
+    const user = anchor.web3.Keypair.generate();
+    const admin = anchor.web3.Keypair.generate();
+    const customer = anchor.web3.Keypair.generate();
+    const customerB = anchor.web3.Keypair.generate();
+    const architect = anchor.web3.Keypair.generate();
+    const architectB = anchor.web3.Keypair.generate();
+    const builder = anchor.web3.Keypair.generate();
+    const validator = anchor.web3.Keypair.generate();
+    const new_authority = anchor.web3.Keypair.generate();
+
+    let architectToken = undefined;
+    let architecBtToken = undefined;
+    let builderToken = undefined;
+    let validatorToken = undefined;
+    let mint= undefined;
+    let poolVault= undefined;
+
     it("log users", async () => {
         console.log("\thadi: ", hadi.publicKey.toBase58());
         console.log("\tadmin : ",admin.publicKey.toBase58());
@@ -75,51 +91,18 @@ describe('datafarm', () => {
         assert.ok(builder.publicKey.equals(builderToken.owner));
         assert.ok(validator.publicKey.equals(validatorToken.owner));
     }).timeout(90000);
-    it("Creates Mining Pool", async () => {
-        const architect_stake = new anchor.BN(20) ;
-        const builder_stake = new anchor.BN(20) ;
-        const validator_stake = new anchor.BN(20) ;
-        const reward_apy = 10 ;
-        const pool_cap = new anchor.BN(250000000) ;
-        const penalty = new anchor.BN(2) ;
 
-        const  transaction =  await dataProgram.rpc.initPool(
-            architect_stake,builder_stake,validator_stake,
-            reward_apy,pool_cap,penalty,
-            {
-                accounts: {
-                    poolAccount : admin.publicKey,
-                    poolAuthority: user.publicKey,
-                    sns : mint.publicKey
-                },
-            signers: [admin],
-            instructions: [await program.account.poolAccount.createInstruction(admin)],
-
-        });
-        const pool = await program.account.poolAccount.fetch(admin.publicKey);
-        assert.ok(pool.snsMint.equals(mint.publicKey));
-        assert.ok(pool.authority.equals(user.publicKey));
-        assert.ok(pool.architectStake.eq(architect_stake));
-        assert.ok(pool.builderStake.eq(builder_stake));
-        assert.ok(pool.validatorStake.eq(validator_stake));
-        assert.ok(pool.poolCap.eq(pool_cap));
-        assert.ok(pool.penalty.eq(penalty));
-        assert.ok(pool.rewardApy === reward_apy);
-    }).timeout(10000);
-    it("Update Mining Pool APY", async () => {
-        const previous_pool = await dataProgram.account.poolAccount.fetch(admin.publicKey);
+/*    it("Update Mining Pool APY", async () => {
+        const previous_pool =  await dataProgram.state.fetch();
         const newApy = 13 ;
-        const  transaction =  await dataProgram.rpc.updatePool(newApy,new_authority.publicKey,
+        const  transaction =  await dataProgram.state.rpc.updatePool(newApy,new_authority.publicKey,
             {
                 accounts: {
-                    poolAccount:admin.publicKey,
                     authority: admin.publicKey
                 },
                 signers: [admin]
             });
-        const pool = await dataProgram.account.poolAccount.fetch(admin.publicKey);
-        const pooladdress = await dataProgram.account.poolAccount.associatedAddress(admin.publicKey);
-
+        const pool =  await dataProgram.state.fetch();
         assert.ok(pool.rewardApy === newApy);
         assert.ok(previous_pool.rewardApy !== pool.rewardApy);
     }).timeout(20000);
@@ -140,7 +123,7 @@ describe('datafarm', () => {
         const CampaignSeed = 'CampaignCreate';
         const [ArchitectFirst ,nonce]= await PublicKey.findProgramAddress(
             [architect.publicKey.toBuffer(),admin.publicKey.toBuffer()],
-            program.programId
+            dataProgram.programId
         );
         console.log("first ",ArchitectFirst.toBase58(),"nonce",nonce);
         await dataProgram.rpc.createCampaign(
@@ -155,19 +138,16 @@ describe('datafarm', () => {
             topic_subject,
             topic_explain,
             seed_phrase,
-            nonce,
             {
                 accounts: {
-                    campaignAccount: ArchitectFirst,
+                    campaignAccount: architect.publicKey,
                     architect: architect.publicKey,
                     pool: admin.publicKey,
-                    architectToken : architectToken.address,
-                    snsMint : mint.publicKey ,
-                    poolVault : poolVault.address,
                     tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
-
                 },
-
+                instructions: [
+                    await dataProgram.account.campaignAccount.createInstruction(architect),
+                ],
                 signers: [architect],
             });
 
@@ -176,56 +156,37 @@ describe('datafarm', () => {
         console.log("\tcampaign address ",campaignAddr.toBase58());
         assert.ok(campaign.minBuilder.eq(min_builder));
     }).timeout(20000);
-/*    it("Create second Campaign by architect", async () => {
-        const pool = await program.account.poolAccount.fetch(admin.publicKey);
-        const offChainReference = new anchor.BN(1213);
-        const period = new anchor.BN(14) ;
-        const min_builder= new anchor.BN(5) ;
-        const min_validator= new anchor.BN(5) ;
-        const reward_per_builder = new anchor.BN(3) ;
-        const reward_per_validator = new anchor.BN(2) ;
-        const validation_quorum = 64 ;
-        const topic_domain = "my topic";
-        const topic_subject = "new subject";
-        const topic_explain = "here is my explain";
-        const seed_phrase = "write sentence about solana";
+   it("Architect stake to campaign", async () => {
+        const pool = await dataProgram.account.poolAccount.associatedAddress(admin.publicKey);
+        const amount = 64 ;
         const CampaignSeed = 'CampaignCreate';
         const [ArchitectSecond ,nonce]= await anchor.web3.PublicKey.findProgramAddress(
             [architect.publicKey.toBuffer(),Buffer.from(anchor.utils.bytes.utf8.encode(CampaignSeed))],
-            programId
+            stakingProgram.programId
         );
         console.log("second ",ArchitectSecond.toBase58());
-        await program.rpc.createCampaign(
-            offChainReference,
-            period,
-            min_builder,
-            min_validator,
-            reward_per_builder,
-            reward_per_validator,
-            validation_quorum,
-            topic_domain,
-            topic_subject,
-            topic_explain,
-            seed_phrase,
+        await stakingProgram.rpc.deposit(
+            amount,
             nonce,
             {
                 accounts: {
-                    campaign: ArchitectFirst,
+                    stakeAccount: architect.publicKey,
                     architect: architect.publicKey,
-                    pool: admin.publicKey,
+                    //pool: pool,
                     architectToken : architectToken.address,
-                    snsMint : mint.publicKey ,
                     poolVault : poolVault.address,
                     tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
+                    systemProgram: anchor.web3.SystemProgram.programId,
+                    clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
 
                 },
                 instructions: [
-                    await program.account.campaign.createInstruction(architect),
+                    await stakingProgram.account.campaign.createInstruction(architect),
                 ],
                 signers: [architect],
             });
-        const campaign = await program.account.campaign.fetch(ArchitectSecond);
-        const campaignAddr = await program.account.campaign.associatedAddress(ArchitectSecond);
+        const campaign = await stakingProgram.account.campaign.fetch(ArchitectSecond);
+        const campaignAddr = await stakingProgram.account.campaign.associatedAddress(ArchitectSecond);
         console.log("\tcampaign address ",campaignAddr.toBase58());
         assert.ok(campaign.minBuilder.eq(min_builder));
     }).timeout(20000);*/

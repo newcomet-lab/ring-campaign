@@ -1,11 +1,12 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, Mint, MintTo, TokenAccount, Transfer};
+use datafarm::{self,PoolAccount};
 declare_id!("HgaSDFf4Vc9gWajXhNCFaAC1epszwqS2zzbAhuJpA5Ev");
 
 #[program]
-pub mod staking {
+pub mod Staking {
     use super::*;
-    pub fn deposit(ctx: Context<InitStake>, nonce: u8) -> ProgramResult {
+    pub fn deposit(ctx: Context<InitStake>, amount : u64,nonce: u8) -> ProgramResult {
         let stake = &mut ctx.accounts.stake_account.load_init()?;
         let pool = &mut ctx.accounts.pool.load()?;
         let cpi_accounts = Transfer {
@@ -15,18 +16,20 @@ pub mod staking {
         };
         let cpi_program = ctx.accounts.token_program.clone();
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
-        let stake_amount = pool.architect_stake.checked_mul(1000_000_000).unwrap();
+        let stake_amount = 10 ;
+            //pool.architect_stake.checked_mul(1000_000_000).unwrap();
         token::transfer(cpi_ctx, stake_amount)?;
-        stake.token_amount = stake_amount;
+        stake.token_amount += stake_amount;
         stake.start_block = ctx.accounts.clock.slot;
         stake.lock_in_time = ctx.accounts.clock.unix_timestamp;
         stake.pending_reward = 0 ;
+        stake.user_address = ctx.accounts.architect_token.key() ;
         stake.status = true ;
         Ok(())
     }
     pub fn withdraw(ctx: Context<CloseStake>, nonce: u8) -> ProgramResult {
         let stake = &mut ctx.accounts.stake_account.load_init()?;
-        let pool = &mut ctx.accounts.pool.load()?;
+        //let pool = &mut ctx.accounts.pool.load()?;
         let cpi_accounts = Transfer {
             from: ctx.accounts.pool_vault.to_account_info(),
             to: ctx.accounts.architect_token.to_account_info(),
@@ -34,9 +37,10 @@ pub mod staking {
         };
         let cpi_program = ctx.accounts.token_program.clone();
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
-        let stake_amount = stake.token_amount.checked_mul(1000_000_000).unwrap();
+        let stake_amount = 10 ;
+            //stake.token_amount.checked_mul(1000_000_000).unwrap();
         token::transfer(cpi_ctx, stake_amount)?;
-        stake.token_amount = 0;
+        stake.token_amount -= stake_amount;
         stake.end_block = ctx.accounts.clock.slot;
         stake.lock_out_time = ctx.accounts.clock.unix_timestamp;
         stake.status = false ;
@@ -48,7 +52,7 @@ pub mod staking {
 pub struct InitStake<'info> {
     #[account(
     init,
-    seeds = [architect.key().as_ref(), pool.key().as_ref()],
+    seeds = [architect.key().as_ref(), pool_vault.key().as_ref()],
     bump,
     payer = architect, owner = *program_id
     )]
@@ -59,6 +63,7 @@ pub struct InitStake<'info> {
     pool: Loader<'info, PoolAccount>,
     pool_vault: ProgramAccount<'info, TokenAccount>,
     system_program: AccountInfo<'info>,
+    #[account(constraint = token_program.key == &token::ID)]
     token_program: AccountInfo<'info>,
     clock: Sysvar<'info, Clock>,
 }
@@ -69,7 +74,7 @@ pub struct CloseStake<'info> {
     #[account(signer)]
     architect: AccountInfo<'info>,
     architect_token: ProgramAccount<'info, TokenAccount>,
-    pool: Loader<'info, PoolAccount>,
+   // pool: Loader<'info, PoolAccount>,
     pool_vault: ProgramAccount<'info, TokenAccount>,
     system_program: AccountInfo<'info>,
     token_program: AccountInfo<'info>,
@@ -89,28 +94,12 @@ pub struct stakeAccount {
     pub token_address: Pubkey,
     pub user_address: Pubkey,
 }
-#[account(zero_copy)]
-pub struct PoolAccount {
-    // 8
-    pub admin: Pubkey,            // 32
-    pub sns_mint: Pubkey,         // 32
-    pub authority: Pubkey,        // 32
-    pub head: u64,                // 8
-    pub tail: u64,                // 8
-    pub campaigns: [Pubkey; 512], // 32x1024
-    pub architect_stake: u64,     // 8
-    pub builder_stake: u64,       // 8
-    pub validator_stake: u64,     // 8
-    pub reward_apy: u8,           // 1
-    pub pool_cap: u64,            // 8
-    pub penalty: u64,             // 8
-}
 
 impl<'info> InitStake<'info> {
     fn accounts(ctx: &Context<InitStake>, nonce: u8) -> ProgramResult {
         let seeds = &[
             ctx.accounts.architect.to_account_info().key.as_ref(),
-            ctx.accounts.pool.to_account_info().key.as_ref(),
+            ctx.accounts.pool_vault.to_account_info().key.as_ref(),
             &[nonce],
         ];
         let architect_signer = Pubkey::create_program_address(seeds, ctx.program_id)

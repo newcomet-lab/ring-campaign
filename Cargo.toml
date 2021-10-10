@@ -1,5 +1,5 @@
 [workspace]
 members = [
     "programs/datafarm",
-    "programs/staking",
+    "programs/staking"
 ]
