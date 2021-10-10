@@ -12,7 +12,27 @@ const MEDIUM: usize = 512;
 #[program]
 pub mod Datafarm {
     use super::*;
+    pub const SIZE: u64 = 99;
 
+    #[state]
+    pub struct PoolConfig {
+        pub stake: u64,
+        pub reward_per_block: u64,
+    }
+
+    impl PoolConfig {
+        pub fn new(_ctx: Context<Ctor>,amount : u64,reward : u64) -> Result<Self, ProgramError> {
+            Ok(Self { stake : amount ,reward_per_block : reward })
+        }
+        pub fn update_stake(&mut self,ctx: Context<Ctor>,amount : u64)-> ProgramResult{
+            self.stake = self.stake.checked_add(amount).unwrap();
+            Ok(())
+        }
+        pub fn update_reward(&mut self,ctx: Context<Ctor>,reward : u64)-> ProgramResult{
+            self.reward_per_block = reward;
+            Ok(())
+        }
+    }
     const CONTRACT_PDA_SEED: &[u8] = b"synesis";
     pub fn init_pool(
         ctx: Context<initPool>,
@@ -157,7 +177,7 @@ pub struct PoolAccount {
     // 8
     pub tail: u64,
     // 8
-    pub campaigns: [Pubkey; 512],
+    pub campaigns: [Pubkey; 128],
     // 32x1024
     pub architect_stake: u64,
     // 8
@@ -237,7 +257,7 @@ pub struct CampaignAccount {
     pub reward_per_validator: u64,
     pub validation_quorum: u8,
     pub reward_token: Pubkey,
-    pub utterances: [Utterance; 512],
+    pub utterances: [Utterance; 256],
     pub time_limit: u64,
     pub init_limit: u64,
     pub domain: [u8; 256],
@@ -262,7 +282,7 @@ impl Default for CampaignAccount {
             reward_per_validator: 0,
             validation_quorum: 0,
             reward_token: Pubkey::default(),
-            utterances: [Utterance::default(); 512],
+            utterances: [Utterance::default(); 256],
             time_limit: 0,
             init_limit: 0,
             domain: [0; 256],
@@ -316,7 +336,7 @@ impl PoolAccount {
         self.head
     }
     fn index_of(counter: u64) -> usize {
-        std::convert::TryInto::try_into(counter % 512).unwrap()
+        std::convert::TryInto::try_into(counter % 256).unwrap()
     }
 }
 
