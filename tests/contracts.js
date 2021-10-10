@@ -188,6 +188,40 @@ describe('datafarm', () => {
         console.log("\tcampaign address ",campaignAddr.toBase58());
         assert.ok(campaign.minBuilder.eq(min_builder));
     }).timeout(20000);
+    it("Architect stake to campaign", async () => {
+        const pool = await dataProgram.account.poolAccount.associatedAddress(admin.publicKey);
+        const amount = new anchor.BN(64 );
+        const CampaignSeed = 'CampaignCreate';
+        const [ArchitectSecond ,nonce]= await anchor.web3.PublicKey.findProgramAddress(
+            [architect.publicKey.toBuffer(),poolVault.address.toBuffer()],
+            stakingProgram.programId
+        );
+        console.log("second ",ArchitectSecond.toBase58());
+        await stakingProgram.rpc.deposit(
+            amount,
+            nonce,
+            {
+                accounts: {
+                    stakeAccount: ArchitectSecond,
+                    architect: architect.publicKey,
+                    architectToken : architectToken.address,
+                 //   pool: admin.publicKey,
+                    poolVault : poolVault.address,
+                    systemProgram: anchor.web3.SystemProgram.programId,
+                    tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
+                    clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
+
+                },
+                instructions: [
+                    await stakingProgram.account.stakeAccount.createInstruction(architect),
+                ],
+                signers: [architect],
+            });
+        const campaign = await stakingProgram.account.stakeAccount.fetch(architect.publicKey);
+        const campaignAddr = await stakingProgram.account.stakeAccount.associatedAddress(architect.publicKey);
+        console.log("\tcampaign address ",campaignAddr.toBase58());
+        assert.ok(campaign.minBuilder.eq(min_builder));
+    }).timeout(20000);
 /*
     it("Create Campaign by architect", async () => {
         const pool = await dataProgram.account.poolAccount.fetch(admin.publicKey);

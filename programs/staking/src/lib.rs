@@ -8,7 +8,7 @@ pub mod Staking {
     use super::*;
     pub fn deposit(ctx: Context<InitStake>, amount : u64,nonce: u8) -> ProgramResult {
         let stake = &mut ctx.accounts.stake_account.load_init()?;
-        let pool = &mut ctx.accounts.pool.load()?;
+        //let pool = &mut ctx.accounts.pool.load()?;
         let cpi_accounts = Transfer {
             from: ctx.accounts.architect_token.to_account_info(),
             to: ctx.accounts.pool_vault.to_account_info(),
@@ -60,7 +60,7 @@ pub struct InitStake<'info> {
     #[account(signer)]
     architect: AccountInfo<'info>,
     architect_token: ProgramAccount<'info, TokenAccount>,
-    pool: Loader<'info, PoolAccount>,
+   // pool: Loader<'info, PoolAccount>,
     pool_vault: ProgramAccount<'info, TokenAccount>,
     system_program: AccountInfo<'info>,
     #[account(constraint = token_program.key == &token::ID)]
