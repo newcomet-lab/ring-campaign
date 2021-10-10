@@ -16,5 +16,5 @@ default = []
 
 [dependencies]
 anchor-lang = "0.17.0"
-anchor-spl= "0.17.0"
+anchor-spl = "0.17.0"
 datafarm = { path = "../datafarm", features = ["cpi"] }

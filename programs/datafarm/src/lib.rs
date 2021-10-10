@@ -1,8 +1,10 @@
 #![feature(use_extern_macros)]
-use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Burn, Mint, MintTo, TokenAccount, Transfer};
+
 use std::fmt::{self, Debug, Display};
 use std::io::Write;
+
+use anchor_lang::prelude::*;
+use anchor_spl::token::{self, Burn, Mint, MintTo, TokenAccount, Transfer};
 
 declare_id!("GWzBR7znXxEVDkDVgQQu5Vpzu3a5G4e5kPXaE9MvebY2");
 const SMALL: usize = 256;
@@ -37,14 +39,14 @@ pub mod Datafarm {
                    reward_apy: u8,
                    pool_cap: u64,
                    penalty: u64,
-                   reward_per_block :u64) -> Result<Self, ProgramError> {
+                   reward_per_block: u64) -> Result<Self, ProgramError> {
             Ok(Self {
                 authority: ctx.accounts.authority.key(),
                 mint: ctx.accounts.mint.key(),
                 vault: ctx.accounts.vault.key(),
                 head: 0,
                 tail: 0,
-                campaigns: [Pubkey::default();16],
+                campaigns: [Pubkey::default(); 16],
                 reward_per_block,
                 architect_stake,
                 builder_stake,
@@ -60,7 +62,9 @@ pub mod Datafarm {
             Ok(())
         }
     }
+
     const CONTRACT_PDA_SEED: &[u8] = b"synesis";
+
     pub fn init_pool(
         ctx: Context<initPool>,
         architect_stake: u64,
@@ -88,6 +92,7 @@ pub mod Datafarm {
         pool.reward_apy = apy;
         Ok(())
     }
+
     //#[access_control(CreateCampaign::accounts(&ctx, nonce))]
     pub fn create_campaign(
         ctx: Context<CreateCampaign>,
@@ -153,12 +158,14 @@ pub mod Datafarm {
         Ok(())
     }
 }
+
 #[derive(Accounts)]
 pub struct Ctor<'info> {
     authority: AccountInfo<'info>,
-    vault :CpiAccount<'info, TokenAccount>,
-    mint:CpiAccount<'info, Mint>,
+    vault: CpiAccount<'info, TokenAccount>,
+    mint: CpiAccount<'info, Mint>,
 }
+
 // Prevent duplicate ontology per campaign
 fn check_campaign<'info>(campaign_account: &Loader<'info, CampaignAccount>) -> ProgramResult {
     let campaign = campaign_account.load()?;
@@ -370,14 +377,13 @@ impl CampaignAccount {
                 self.utterances[utterance_id as usize].incorrect += 1;
             }
         }
+
+        if self.min_validator > self.utterances[utterance_id as usize].correct {
+            self.utterances[utterance_id as usize].finish = true;
+        }
         self.utterances[utterance_id as usize].validators
             [self.utterances[utterance_id as usize].head as usize] = validator;
         self.utterances[utterance_id as usize].head += 1;
-
-        if self.min_validator > self.utterances[utterance_id as usize].correct  {
-                self.utterances[utterance_id as usize].finish = true;
-        }
-
     }
     fn get_utterance(&mut self, utterance_id: u64) -> Utterance {
         self.utterances[utterance_id as usize].clone()

@@ -1,14 +1,18 @@
-use anchor_lang::prelude::*;
 use anchor_lang::Account;
+use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, Mint, MintTo, TokenAccount, Transfer};
-use datafarm::Datafarm::PoolConfig as Pool;
+
 use datafarm::{self, Ctor, PoolAccount};
+use datafarm::Datafarm::PoolConfig as Pool;
+
 declare_id!("HgaSDFf4Vc9gWajXhNCFaAC1epszwqS2zzbAhuJpA5Ev");
 
 #[program]
 pub mod Staking {
     use super::*;
+
     const PDA_SEED: &[u8] = b"staking";
+
     pub fn stake(ctx: Context<InitStake>) -> ProgramResult {
         let stake = &mut ctx.accounts.stake_account.load_init()?;
         let state = &mut ctx.accounts.cpi_state;
@@ -58,6 +62,7 @@ pub mod Staking {
         Ok(())
     }
 }
+
 impl<'info> CloseStake<'info> {
     fn to_taker(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
@@ -69,6 +74,7 @@ impl<'info> CloseStake<'info> {
         CpiContext::new(cpi_program, cpi_accounts)
     }
 }
+
 #[derive(Accounts)]
 pub struct InitStake<'info> {
     #[account(zero)]
@@ -85,7 +91,7 @@ pub struct InitStake<'info> {
     pub campaign: AccountInfo<'info>,
     #[account(mut)]
     pool_vault: CpiAccount<'info, TokenAccount>,
-    #[account(constraint = token_program.key == &token::ID)]
+    #[account(constraint = token_program.key == & token::ID)]
     token_program: AccountInfo<'info>,
     clock: Sysvar<'info, Clock>,
 }
@@ -108,6 +114,7 @@ pub struct CloseStake<'info> {
     token_program: AccountInfo<'info>,
     clock: Sysvar<'info, Clock>,
 }
+
 #[account(zero_copy)]
 pub struct stakeAccount {
     pub token_amount: u64,

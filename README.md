@@ -54,18 +54,24 @@ Make sure your `NODE_PATH` is set properly so that globally installed modules ca
 |:------------|:---------------|
 | Node.js     | v11.0.0        |
 
-
 ## for build smart contract
+
 ```bash
 anchor build
 ```
+
 ## for deploy smart contract
+
 define network in Anchor.toml
+
 ```bash
 anchor deploy
 ```
+
 ## for test smart contract
+
 it run test case for deployed smart contract
+
 ```bash
 mocha tests
 ```
