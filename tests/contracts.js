@@ -190,29 +190,45 @@ describe('datafarm', () => {
         const CampaignSeed = 'CampaignCreate';
         const baseAccount = anchor.web3.Keypair.generate();
         const baseToken= await userCharge(mint,baseAccount,owner);
+        const [mainData, nonce] = await PublicKey.findProgramAddress(
+            [Buffer.from("Staking")],
+            stakingProgram.programId,
+        );
+        console.log("address ",mainData.toBase58());
+        const CreateAddress = anchor.web3.SystemProgram.createAccountWithSeed(
+            {
+                basePubkey : architect.publicKey,
+                fromPubkey: provider.wallet.publicKey,
+                lamports:3,
+                programId :stakingProgram.programId,
+                seed : "staking",
+                space :0
+            }
+        );
+        const myAccount = anchor.web3.Keypair.generate();
+        console.log("\t my account ",myAccount.publicKey.toBase58());
         await stakingProgram.rpc.deposit(
             amount,
-            8,
             {
                 accounts: {
-                    stakeAccount: builder.publicKey,
-                    user: builder.publicKey,
-                    userToken : builderToken.address,
-                 //   pool: admin.publicKey,
-                    poolVault : poolVault.address,
+                    stakeAccount: myAccount.publicKey,
+                    user: architect.publicKey,
                     systemProgram: anchor.web3.SystemProgram.programId,
+                    userToken : architectToken.address,
+                    pool,
+                    poolVault : poolVault.address,
                     tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
                     clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
                 },
                 instructions: [
-                    await stakingProgram.account.stakeAccount.createInstruction(builder),
+                    await stakingProgram.account.stakeAccount.createInstruction(myAccount),
                 ],
-                signers: [builder],
+                signers: [myAccount,architect],
             });
-        const campaign = await stakingProgram.account.stakeAccount.fetch(builder.publicKey);
-        const campaignAddr = await stakingProgram.account.stakeAccount.associatedAddress(builder.publicKey);
-        console.log("\tcampaign address ",campaignAddr.toBase58());
-        assert.ok(campaign.minBuilder.eq(min_builder));
+        //const campaign = await stakingProgram.account.stakeAccount.fetch(builder.publicKey);
+        //const campaignAddr = await stakingProgram.account.stakeAccount.associatedAddress(builder.publicKey);
+       // console.log("\tcampaign address ",campaignAddr.toBase58());
+        //assert.ok(campaign.minBuilder.eq(min_builder));
     }).timeout(20000);
 /*
     it("Create Campaign by architect", async () => {

@@ -6,10 +6,10 @@ declare_id!("HgaSDFf4Vc9gWajXhNCFaAC1epszwqS2zzbAhuJpA5Ev");
 #[program]
 pub mod Staking {
     use super::*;
-    pub fn deposit(ctx: Context<InitStake>, amount : u64,bump: u8) -> ProgramResult {
-        let stake = &mut ctx.accounts.stake_account.load_init()?;
+    pub fn deposit(ctx: Context<InitStake>, amount : u64) -> ProgramResult {
+        let stake = &mut ctx.accounts.stake_account;
         //let pool = &mut ctx.accounts.pool.load()?;
-        let cpi_accounts = Transfer {
+/*        let cpi_accounts = Transfer {
             from: ctx.accounts.user_token.to_account_info(),
             to: ctx.accounts.pool_vault.to_account_info(),
             authority: ctx.accounts.user.clone(),
@@ -23,14 +23,14 @@ pub mod Staking {
         stake.start_block = ctx.accounts.clock.slot;
         stake.lock_in_time = ctx.accounts.clock.unix_timestamp;
         stake.pending_reward = 0 ;
-        stake.user_address = ctx.accounts.user_token.key() ;
-        stake.status = true ;
+        stake.user_address = ctx.accounts.user_token.key() ;*/
+       // stake.status = true ;
         Ok(())
     }
     pub fn withdraw(ctx: Context<CloseStake>, nonce: u8) -> ProgramResult {
-        let stake = &mut ctx.accounts.stake_account.load_init()?;
+        let stake = &mut ctx.accounts.stake_account;
         //let pool = &mut ctx.accounts.pool.load()?;
-        let cpi_accounts = Transfer {
+/*        let cpi_accounts = Transfer {
             from: ctx.accounts.pool_vault.to_account_info(),
             to: ctx.accounts.user_token.to_account_info(),
             authority: ctx.accounts.system_program.clone(),
@@ -42,42 +42,41 @@ pub mod Staking {
         token::transfer(cpi_ctx, stake_amount)?;
         stake.token_amount -= stake_amount;
         stake.end_block = ctx.accounts.clock.slot;
-        stake.lock_out_time = ctx.accounts.clock.unix_timestamp;
-        stake.status = false ;
+        stake.lock_out_time = ctx.accounts.clock.unix_timestamp;*/
+        //stake.status = false ;
         Ok(())
     }
 }
 
 #[derive(Accounts)]
-#[instruction(bump: u8)]
 pub struct InitStake<'info> {
     #[account(zero)]
     stake_account: Loader<'info, stakeAccount>,
+    system_program: AccountInfo<'info>,
     #[account(signer)]
     user: AccountInfo<'info>,
-    user_token: ProgramAccount<'info, TokenAccount>,
-   // pool: Loader<'info, PoolAccount>,
-    pool_vault: ProgramAccount<'info, TokenAccount>,
-    system_program: AccountInfo<'info>,
+    #[account(mut)]
+    user_token: CpiAccount<'info, TokenAccount>,
+    pool: AccountInfo<'info>,
+    pool_vault: CpiAccount<'info, TokenAccount>,
     #[account(constraint = token_program.key == &token::ID)]
     token_program: AccountInfo<'info>,
-    clock: Sysvar<'info, Clock>,
+    clock: Sysvar<'info, Clock>
 }
 #[derive(Accounts)]
 pub struct CloseStake<'info> {
     #[account(mut)]
     stake_account: Loader<'info, stakeAccount>,
-    #[account(signer)]
+/*    #[account(signer)]
     user: AccountInfo<'info>,
     user_token: ProgramAccount<'info, TokenAccount>,
    // pool: Loader<'info, PoolAccount>,
     pool_vault: ProgramAccount<'info, TokenAccount>,
     system_program: AccountInfo<'info>,
     token_program: AccountInfo<'info>,
-    clock: Sysvar<'info, Clock>,
+    clock: Sysvar<'info, Clock>,*/
 }
 #[account(zero_copy)]
-#[derive(Default)]
 pub struct stakeAccount {
     pub token_amount: u64,
     pub lock_in_time: i64,
@@ -91,24 +90,8 @@ pub struct stakeAccount {
     pub user_address: Pubkey,
 }
 
-impl<'info> InitStake<'info> {
-    fn accounts(ctx: &Context<InitStake>, nonce: u8) -> ProgramResult {
-        let seeds = &[
-            ctx.accounts.user.to_account_info().key.as_ref(),
-            ctx.accounts.pool_vault.to_account_info().key.as_ref(),
-            &[nonce],
-        ];
-        let architect_signer = Pubkey::create_program_address(seeds, ctx.program_id)
-            .map_err(|_| ProgramError::InvalidSeeds)?;
-        if &architect_signer != ctx.accounts.user.to_account_info().key {
-            return Err(ProgramError::InvalidSeeds);
-        }
 
-        Ok(())
-    }
-}
-
-impl<'a, 'b, 'c, 'info> From<&InitStake<'info>> for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
+/*impl<'a, 'b, 'c, 'info> From<&InitStake<'info>> for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
     fn from(accounts: &InitStake<'info>) -> CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
             from: accounts.user_token.to_account_info(),
@@ -119,3 +102,4 @@ impl<'a, 'b, 'c, 'info> From<&InitStake<'info>> for CpiContext<'a, 'b, 'c, 'info
         CpiContext::new(cpi_program, cpi_accounts)
     }
 }
+*/
