@@ -371,10 +371,10 @@ impl CampaignAccount {
     fn update_utterance(&mut self, utterance_id: u64, status: bool, validator: Pubkey) {
         match status {
             true => {
-                self.utterances[utterance_id as usize].correct += 1;
+                self.utterances[utterance_id as usize].correct = self.utterances[utterance_id as usize].correct.checked_add(1).unwrap();
             }
             false => {
-                self.utterances[utterance_id as usize].incorrect += 1;
+                self.utterances[utterance_id as usize].incorrect = self.utterances[utterance_id as usize].correct.checked_add(1).unwrap();;
             }
         }
 
@@ -383,7 +383,7 @@ impl CampaignAccount {
         }
         self.utterances[utterance_id as usize].validators
             [self.utterances[utterance_id as usize].head as usize] = validator;
-        self.utterances[utterance_id as usize].head += 1;
+        self.utterances[utterance_id as usize].head = self.utterances[utterance_id as usize].head.checked_add(1).unwrap();;
     }
     fn get_utterance(&mut self, utterance_id: u64) -> Utterance {
         self.utterances[utterance_id as usize].clone()

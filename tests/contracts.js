@@ -370,6 +370,7 @@ describe('datafarm', () => {
         const campaignAddr = await dataProgram.account.campaignAccount.associatedAddress(architect.publicKey);
         let utterance0 = new TextDecoder("utf-8").decode(new Uint8Array(campaignData.utterances[0].data));
         let utterance1 = new TextDecoder("utf-8").decode(new Uint8Array(campaignData.utterances[1].data));
+        let utterance2 = new TextDecoder("utf-8").decode(new Uint8Array(campaignData.utterances[2].data));
 
         // validated first submitted utterance
         if (utterance0.startsWith("hello utterance0")) {
@@ -472,6 +473,20 @@ describe('datafarm', () => {
         }
         // refuse second submitted utterance
         if (utterance1.startsWith("hello utterance1")) {
+            await dataProgram.rpc.validate(
+                new anchor.BN(1),
+                true,
+                {
+                    accounts: {
+                        validator: validator.publicKey,
+                        campaignAccount: architect.publicKey,
+                        pool: admin.publicKey,
+                    },
+                    signers: [validator]
+                }
+            );
+        }
+        if (utterance1.startsWith("hello utterance2")) {
             await dataProgram.rpc.validate(
                 new anchor.BN(1),
                 true,
