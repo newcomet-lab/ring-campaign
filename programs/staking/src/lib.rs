@@ -8,8 +8,7 @@ declare_id!("HgaSDFf4Vc9gWajXhNCFaAC1epszwqS2zzbAhuJpA5Ev");
 #[program]
 pub mod Staking {
     use super::*;
-
-
+    const PDA_SEED: &[u8] = b"staking";
     pub fn stake(ctx: Context<InitStake>) -> ProgramResult {
         let stake = &mut ctx.accounts.stake_account.load_init()?;
         let state = &mut ctx.accounts.cpi_state ;
@@ -35,27 +34,41 @@ pub mod Staking {
         stake.status= true ;
         Ok(())
     }
-    pub fn unstake(ctx: Context<CloseStake>, nonce: u8) -> ProgramResult {
+
+    pub fn unstake(ctx: Context<CloseStake>) -> ProgramResult {
         let stake = &mut ctx.accounts.stake_account.load_mut()?;
         let state = &mut ctx.accounts.cpi_state ;
-        let cpi_accounts = Transfer {
-            from: ctx.accounts.pool_vault.to_account_info(),
-            to: ctx.accounts.user_token.to_account_info(),
-            authority: ctx.accounts.system_program.clone(),
-        };
-        let cpi_program = ctx.accounts.token_program.clone();
-        let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
-
-        token::transfer(cpi_ctx, stake.token_amount)?;
-        stake.token_amount = stake.token_amount.checked_sub(stake.token_amount).unwrap();
+        let (_pda, bump_seed) = Pubkey::find_program_address(&[PDA_SEED], ctx.program_id);
+        let seeds = &[&PDA_SEED[..], &[bump_seed]];
+        stake.token_amount = stake.token_amount
+            .checked_sub(stake.token_amount).unwrap();
         stake.end_block = ctx.accounts.clock.slot;
         stake.lock_out_time = ctx.accounts.clock.unix_timestamp;
-        stake.pending_reward = stake.end_block.checked_sub(stake.start_block).unwrap().checked_mul(state.reward_per_block).unwrap();
+        stake.pending_reward = stake.end_block
+            .checked_sub(stake.start_block).unwrap()
+            .checked_mul(state.reward_per_block).unwrap();
         stake.status = false ;
+        token::transfer(
+            ctx.accounts
+                .to_taker()
+                .with_signer(&[&seeds[..]]),
+            stake.token_amount,
+        )?;
+
         Ok(())
     }
 }
-
+impl<'info> CloseStake<'info> {
+    fn to_taker(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: self.pool_vault.to_account_info().clone(),
+            to: self.user_token.to_account_info().clone(),
+            authority: self.pda_account.clone(),
+        };
+        let cpi_program = self.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
 #[derive(Accounts)]
 pub struct InitStake<'info> {
     #[account(zero)]
@@ -81,12 +94,12 @@ pub struct InitStake<'info> {
 pub struct CloseStake<'info> {
     #[account(mut)]
     stake_account: Loader<'info, stakeAccount>,
-    #[account(signer)]
     user: AccountInfo<'info>,
     #[account(mut)]
     user_token: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
     pool_vault: CpiAccount<'info, TokenAccount>,
+    pda_account: AccountInfo<'info>,
     #[account(mut, state = datafarm)]
     cpi_state: CpiState<'info, Pool>,
     #[account(executable)]

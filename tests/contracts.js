@@ -6,7 +6,7 @@ const {SYSVAR_RENT_PUBKEY,
     PublicKey,
     Keypair,
     SystemProgram,} = require("@solana/web3.js");
-const {userCharge,poolVaultGen} = require("./helper");
+const {userCharge,poolVaultGen,vaultCharge} = require("./helper");
 const splToken = require('@solana/spl-token');
 const {sleep} = require("@project-serum/common");
 const TokenInstructions = require("@project-serum/serum").TokenInstructions;
@@ -66,8 +66,10 @@ describe('datafarm', () => {
     let builderToken = undefined;
     let validatorToken = undefined;
     let mint= undefined;
-    let poolVault= undefined;
-
+    let myAccount = undefined;
+    let pda = undefined;
+    let bump = undefined;
+    let pool_vault = undefined;
     it("log users", async () => {
         console.log("\thadi: ", hadi.publicKey.toBase58());
         console.log("\tadmin : ",admin.publicKey.toBase58());
@@ -78,16 +80,24 @@ describe('datafarm', () => {
         assert.ok(true);
     }).timeout(90000);
     it("Airdrop SNS token to users", async () => {
+
         mint = await splToken.Token.createMint(provider.connection,owner, owner.publicKey, null, 9,  splToken.TOKEN_PROGRAM_ID,)
         console.log('\tSNS Token public address: ' + mint.publicKey.toBase58());
         architectToken  = await userCharge(mint,architect,owner);
         architectBToken  = await userCharge(mint,architectB,owner);
         builderToken  = await userCharge(mint,builder,owner);
         validatorToken  = await userCharge(mint,validator,owner);
-        poolVault  = await poolVaultGen(mint,owner,owner);
+        const [_pda, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
+            [Buffer.from(anchor.utils.bytes.utf8.encode("staking"))],
+            stakingProgram.programId
+        );
+        pda = _pda;
+        pool_vault  = await poolVaultGen(mint,owner,owner);
+
         console.log("\tarchitect have ",architectToken.amount/1000000000," SNS");
         console.log("\tbuilder have ",builderToken.amount/1000000000," SNS");
         console.log("\tvalidator have ",validatorToken.amount/1000000000," SNS");
+        console.log("\t vault is ",validatorToken.address.toBase58());
         assert.ok(architect.publicKey.equals(architectToken.owner));
         assert.ok(builder.publicKey.equals(builderToken.owner));
         assert.ok(validator.publicKey.equals(validatorToken.owner));
@@ -189,7 +199,7 @@ describe('datafarm', () => {
     }).timeout(20000);
     it("Architect stake to campaign", async () => {
         const campaignAddr = await dataProgram.account.campaignAccount.associatedAddress(architect.publicKey);
-        const myAccount = anchor.web3.Keypair.generate();
+        myAccount = anchor.web3.Keypair.generate();
         await stakingProgram.rpc.stake(
             {
                 accounts: {
@@ -200,7 +210,7 @@ describe('datafarm', () => {
                     cpiState :dataProgram.state.address(),
                     datafarm :dataProgram.programId,
                     campaign : campaignAddr,
-                    poolVault : poolVault.address,
+                    poolVault : pool_vault.address,
                     tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
                     clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
                 },
@@ -211,6 +221,27 @@ describe('datafarm', () => {
             });
         const stake = await stakingProgram.account.stakeAccount.fetch(myAccount.publicKey);
         assert.ok(stake.status, true)
+    }).timeout(20000);
+    it("Architect unstake", async () => {
+        const campaignAddr = await dataProgram.account.campaignAccount.associatedAddress(architect.publicKey);
+
+        await stakingProgram.rpc.unstake(
+            {
+                accounts: {
+                    stakeAccount: myAccount.publicKey,
+                    user: architect.publicKey,
+                    systemProgram: anchor.web3.SystemProgram.programId,
+                    userToken : architectToken.address,
+                    cpiState :dataProgram.state.address(),
+                    datafarm :dataProgram.programId,
+                    pdaAccount:pda ,
+                    poolVault : pool_vault.address,
+                    tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
+                    clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
+                },
+            });
+        const stake = await stakingProgram.account.stakeAccount.fetch(myAccount.publicKey);
+        assert.ok(stake.status, false);
     }).timeout(20000);
 /*
     it("Create Campaign by architect", async () => {
