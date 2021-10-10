@@ -59,6 +59,13 @@ describe('datafarm', () => {
     const architectB = anchor.web3.Keypair.generate();
     const builder = anchor.web3.Keypair.generate();
     const validator = anchor.web3.Keypair.generate();
+    const validatorB = anchor.web3.Keypair.generate();
+    const validatorC = anchor.web3.Keypair.generate();
+    const validatorD = anchor.web3.Keypair.generate();
+    const validatorE = anchor.web3.Keypair.generate();
+    const validatorF = anchor.web3.Keypair.generate();
+    const validatorG = anchor.web3.Keypair.generate();
+
     const new_authority = anchor.web3.Keypair.generate();
 
     let architectToken = undefined;
@@ -104,7 +111,23 @@ describe('datafarm', () => {
         assert.ok(validator.publicKey.equals(validatorToken.owner));
     }).timeout(90000);
     it("Creates State Pool", async () => {
-        await dataProgram.state.rpc.new(new anchor.BN(20),new anchor.BN(3),{accounts:{ authority : admin.publicKey }});
+        const architect_stake = new anchor.BN(20) ;
+        const builder_stake = new anchor.BN(20) ;
+        const validator_stake = new anchor.BN(20) ;
+        const reward_apy = 10 ;
+        const reward_per_block = new anchor.BN(3) ;
+        const pool_cap = new anchor.BN(250000000) ;
+        const penalty = new anchor.BN(2) ;
+        await dataProgram.state.rpc.new(
+            architect_stake,builder_stake,validator_stake,
+            reward_apy,pool_cap,penalty,reward_per_block,
+            {
+                accounts:{
+                    authority : admin.publicKey ,
+                    mint : mint.publicKey,
+                    vault : pool_vault.address
+                }
+            });
     });
     it("Creates Mining Pool", async () => {
         const architect_stake = new anchor.BN(20) ;
@@ -330,9 +353,12 @@ describe('datafarm', () => {
             let test = new TextDecoder("utf-8").decode(new Uint8Array(campaignData.utterances[j].data));
             console.log("\tutterance : ",test,
                 " submitted by ",campaignData.utterances[j].builder.toBase58(),
-                "and validation status :",campaignData.utterances[j].validated);
+                "\n\tvalidation correct :",campaignData.utterances[j].correct.toNumber(),
+                "\n\tvalidation incorrect :",campaignData.utterances[j].incorrect.toNumber(),
+                "\n\t and validation status :",campaignData.utterances[j].finish
+            );
         }
-        assert.ok(utter.startsWith("hello"));
+        assert.ok(campaignData.head.toNumber()=== 3);
     }).timeout(90000);
 
     it("validate 2 Utterance of 3 submitted", async () => {
@@ -358,6 +384,90 @@ describe('datafarm', () => {
                 }
             );
        }
+        if (utterance0.startsWith("hello utterance0") ) {
+            await dataProgram.rpc.validate(
+                new anchor.BN(0),
+                true,
+                {
+                    accounts: {
+                        validator: validatorB.publicKey,
+                        campaignAccount: architect.publicKey,
+                        pool : admin.publicKey,
+                    },
+                    signers:[validatorB]
+                }
+            );
+        }
+        if (utterance0.startsWith("hello utterance0") ) {
+            await dataProgram.rpc.validate(
+                new anchor.BN(0),
+                true,
+                {
+                    accounts: {
+                        validator: validatorC.publicKey,
+                        campaignAccount: architect.publicKey,
+                        pool : admin.publicKey,
+                    },
+                    signers:[validatorC]
+                }
+            );
+        }
+        if (utterance0.startsWith("hello utterance0") ) {
+            await dataProgram.rpc.validate(
+                new anchor.BN(0),
+                true,
+                {
+                    accounts: {
+                        validator: validatorD.publicKey,
+                        campaignAccount: architect.publicKey,
+                        pool : admin.publicKey,
+                    },
+                    signers:[validatorD]
+                }
+            );
+        }
+        if (utterance0.startsWith("hello utterance0") ) {
+            await dataProgram.rpc.validate(
+                new anchor.BN(0),
+                true,
+                {
+                    accounts: {
+                        validator: validatorE.publicKey,
+                        campaignAccount: architect.publicKey,
+                        pool : admin.publicKey,
+                    },
+                    signers:[validatorE]
+                }
+            );
+        }
+        if (utterance0.startsWith("hello utterance0") ) {
+            await dataProgram.rpc.validate(
+                new anchor.BN(0),
+                true,
+                {
+                    accounts: {
+                        validator: validatorF.publicKey,
+                        campaignAccount: architect.publicKey,
+                        pool : admin.publicKey,
+                    },
+                    signers:[validatorF]
+                }
+            );
+        }
+        if (utterance0.startsWith("hello utterance0") ) {
+            await dataProgram.rpc.validate(
+                new anchor.BN(0),
+                true,
+                {
+                    accounts: {
+                        validator: validatorG.publicKey,
+                        campaignAccount: architect.publicKey,
+                        pool : admin.publicKey,
+                    },
+                    signers:[validatorG]
+                }
+            );
+        }
         // refuse second submitted utterance
        if (utterance1.startsWith("hello utterance1") ) {
            await dataProgram.rpc.validate(
@@ -381,13 +491,17 @@ describe('datafarm', () => {
         const campaign = await dataProgram.account.campaignAccount.fetch(architect.publicKey);
         for (j=0;j<campaign.head;j++){
             let test = new TextDecoder("utf-8").decode(new Uint8Array(campaign.utterances[j].data));
-            if (campaign.utterances[j].validated){
-                console.log("\tutterance : ",test,
-                    "\n\tbuilder is ",campaign.utterances[j].builder.toBase58(),
-                    "\n\tvalidator is ",campaign.utterances[j].validator.toBase58(),
-                    "\n\tvalidation status :",campaign.utterances[j].isValid);
-            }
-
+             console.log("\tutterance : ",test,
+                    "\n\tbuilder is ",campaign.utterances[j].builder.toBase58());
+                console.log("\n\tvalidators are ");
+                let num_validator= (campaign.utterances[j].correct.toNumber() + campaign.utterances[j].incorrect.toNumber());
+                for(k=0;k<num_validator;k++){
+                    console.log("\t\t",campaign.utterances[j].validators[k].toBase58());
+                }
+            console.log("\n\tvalidation correct :",campaign.utterances[j].correct.toNumber(),
+                    "\n\tvalidation incorrect :",campaign.utterances[j].incorrect.toNumber(),
+                    "\n\tvalidation status :",campaign.utterances[j].finish
+                );
         }
     }).timeout(90000);
 });

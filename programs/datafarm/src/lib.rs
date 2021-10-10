@@ -1,9 +1,8 @@
 #![feature(use_extern_macros)]
-use std::fmt::{self, Debug, Display};
-use std::io::Write;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, Mint, MintTo, TokenAccount, Transfer};
-
+use std::fmt::{self, Debug, Display};
+use std::io::Write;
 
 declare_id!("GWzBR7znXxEVDkDVgQQu5Vpzu3a5G4e5kPXaE9MvebY2");
 const SMALL: usize = 256;
@@ -12,23 +11,51 @@ const MEDIUM: usize = 512;
 #[program]
 pub mod Datafarm {
     use super::*;
-    pub const SIZE: u64 = 99;
 
     #[state]
     pub struct PoolConfig {
-        pub stake: u64,
         pub reward_per_block: u64,
+        pub mint: Pubkey,
+        pub vault: Pubkey,
+        pub authority: Pubkey,
+        pub head: u64,
+        pub tail: u64,
+        pub campaigns: [Pubkey; 16],
+        pub architect_stake: u64,
+        pub builder_stake: u64,
+        pub validator_stake: u64,
+        pub reward_apy: u8,
+        pub pool_cap: u64,
+        pub penalty: u64,
     }
 
     impl PoolConfig {
-        pub fn new(_ctx: Context<Ctor>,amount : u64,reward : u64) -> Result<Self, ProgramError> {
-            Ok(Self { stake : amount ,reward_per_block : reward })
+        pub fn new(ctx: Context<Ctor>,
+                   architect_stake: u64,
+                   builder_stake: u64,
+                   validator_stake: u64,
+                   reward_apy: u8,
+                   pool_cap: u64,
+                   penalty: u64,
+                   reward_per_block :u64) -> Result<Self, ProgramError> {
+            Ok(Self {
+                authority: ctx.accounts.authority.key(),
+                mint: ctx.accounts.mint.key(),
+                vault: ctx.accounts.vault.key(),
+                head: 0,
+                tail: 0,
+                campaigns: [Pubkey::default();16],
+                reward_per_block,
+                architect_stake,
+                builder_stake,
+                validator_stake,
+                reward_apy,
+                pool_cap,
+                penalty,
+            })
         }
-        pub fn update_stake(&mut self,ctx: Context<Ctor>,amount : u64)-> ProgramResult{
-            self.stake = self.stake.checked_add(amount).unwrap();
-            Ok(())
-        }
-        pub fn update_reward(&mut self,ctx: Context<Ctor>,reward : u64)-> ProgramResult{
+
+        pub fn update_reward(&mut self, ctx: Context<Ctor>, reward: u64) -> ProgramResult {
             self.reward_per_block = reward;
             Ok(())
         }
@@ -74,7 +101,7 @@ pub mod Datafarm {
         domain: String,
         subject: String,
         explain: String,
-        phrase: String
+        phrase: String,
     ) -> ProgramResult {
         let pool = &mut ctx.accounts.pool.load_mut()?;
         let campaign = &mut ctx.accounts.campaign_account.load_init()?;
@@ -104,7 +131,7 @@ pub mod Datafarm {
         let last_id = campaign.add_utterance(Utterance {
             builder: ctx.accounts.builder.key(),
             head: 0,
-            validators: [Pubkey::default(); 16],
+            validators: [Pubkey::default(); 32],
             data,
             correct: 0,
             incorrect: 0,
@@ -125,13 +152,12 @@ pub mod Datafarm {
         });
         Ok(())
     }
-
 }
 #[derive(Accounts)]
 pub struct Ctor<'info> {
-    authority : AccountInfo<'info>,
-   // token_vault :ProgramAccount<'info, TokenAccount>,
-   // sns_mint:ProgramAccount<'info, Mint>,
+    authority: AccountInfo<'info>,
+    vault :CpiAccount<'info, TokenAccount>,
+    mint:CpiAccount<'info, Mint>,
 }
 // Prevent duplicate ontology per campaign
 fn check_campaign<'info>(campaign_account: &Loader<'info, CampaignAccount>) -> ProgramResult {
@@ -164,36 +190,20 @@ pub struct updatePool<'info> {
 /// Structure of pool initialization
 #[account(zero_copy)]
 pub struct PoolAccount {
-    // 8
     pub admin: Pubkey,
-    // 32
     pub sns_mint: Pubkey,
-    // 32
     pub token_vault: Pubkey,
-    // 32
     pub authority: Pubkey,
-    // 32
     pub head: u64,
-    // 8
     pub tail: u64,
-    // 8
     pub campaigns: [Pubkey; 128],
-    // 32x1024
     pub architect_stake: u64,
-    // 8
     pub builder_stake: u64,
-    // 8
     pub validator_stake: u64,
-    // 8
     pub reward_apy: u8,
-    // 1
     pub pool_cap: u64,
-    // 8
-    pub penalty: u64, // 8
+    pub penalty: u64,
 }
-
-
-
 
 #[derive(AnchorSerialize, AnchorDeserialize, Debug)]
 pub enum Events {
@@ -240,7 +250,6 @@ pub struct CreateCampaign<'info> {
     #[account("token_program.key == &token::ID")]
     token_program: AccountInfo<'info>,
 }
-
 
 /// Campaign Structure
 #[account(zero_copy)]
@@ -299,7 +308,7 @@ impl Default for CampaignAccount {
 pub struct Utterance {
     pub builder: Pubkey,
     pub head: u64,
-    pub validators: [Pubkey; 16],
+    pub validators: [Pubkey; 32],
     pub data: [u8; 256],
     pub correct: u64,
     pub incorrect: u64,
@@ -311,7 +320,7 @@ impl Default for Utterance {
         Utterance {
             builder: Pubkey::default(),
             head: 0,
-            validators: [Pubkey::default(); 16],
+            validators: [Pubkey::default(); 32],
             data: [0; 256],
             correct: 0,
             incorrect: 0,
@@ -364,18 +373,15 @@ impl CampaignAccount {
         self.utterances[utterance_id as usize].validators
             [self.utterances[utterance_id as usize].head as usize] = validator;
         self.utterances[utterance_id as usize].head += 1;
-        match self.min_validator {
-            x if x >= self.utterances[utterance_id as usize].correct => {
-                self.utterances[utterance_id as usize].finish == true;
-            }
-            _ => {}
+
+        if self.min_validator > self.utterances[utterance_id as usize].correct  {
+                self.utterances[utterance_id as usize].finish = true;
         }
+
     }
     fn get_utterance(&mut self, utterance_id: u64) -> Utterance {
         self.utterances[utterance_id as usize].clone()
     }
-    fn stake(&mut self, user: Pubkey) {}
-    fn unstake(&mut self, user: Pubkey) {}
     fn distribute_reward(&mut self, builder: Pubkey) {}
     fn index_of(counter: u64) -> usize {
         std::convert::TryInto::try_into(counter % 512).unwrap()
