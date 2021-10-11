@@ -6,7 +6,7 @@ use std::io::Write;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, Mint, MintTo, TokenAccount, Transfer};
 
-declare_id!("GWzBR7znXxEVDkDVgQQu5Vpzu3a5G4e5kPXaE9MvebY2");
+declare_id!("2bFt7FK3K8DjjeJCXrv9fqhc34SPo2mWWMNqWgANJngJ");
 const SMALL: usize = 256;
 const MEDIUM: usize = 512;
 

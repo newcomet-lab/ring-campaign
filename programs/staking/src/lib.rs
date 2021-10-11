@@ -5,7 +5,7 @@ use anchor_spl::token::{self, Burn, Mint, MintTo, TokenAccount, Transfer};
 use datafarm::{self, Ctor, PoolAccount};
 use datafarm::Datafarm::PoolConfig as Pool;
 
-declare_id!("HgaSDFf4Vc9gWajXhNCFaAC1epszwqS2zzbAhuJpA5Ev");
+declare_id!("DQU8naysQoj3t9EEhDcFt8LUyGSTJrxMVXYFwviHshYF");
 
 #[program]
 pub mod Staking {
