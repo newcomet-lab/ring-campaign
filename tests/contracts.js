@@ -8,7 +8,7 @@ const {
     Keypair,
     SystemProgram,
 } = require("@solana/web3.js");
-const {userCharge, poolVaultGen, vaultCharge} = require("./helper");
+const {userCharge, poolVaultGen, ourCharge} = require("./helper");
 const splToken = require('@solana/spl-token');
 const {sleep} = require("@project-serum/common");
 const TokenInstructions = require("@project-serum/serum").TokenInstructions;
@@ -31,6 +31,8 @@ describe('datafarm', () => {
     anchor.setProvider(anchor.Provider.env());
     const provider = anchor.getProvider();
     const SNS = new anchor.web3.PublicKey("4x9tT6a8hjs6YztPJs9ZHUimQaxBetVFYTsDAAfh8Luz");
+    const david = new anchor.web3.PublicKey("7aU7BDLoBQm8gmAiaDENQhbpPStzwfJPuM8a1JRhLPtv");
+    const alex = new anchor.web3.PublicKey("8WQL2yB5yw9myW7Xo34sZ7eUTU2oME83BFi6Xa7Wwm1V");
     const data_idl = JSON.parse(
         require('fs')
             .readFileSync('target/idl/Datafarm.json', 'utf8')
@@ -96,13 +98,16 @@ describe('datafarm', () => {
         architectBToken = await userCharge(mint, architectB, owner);
         builderToken = await userCharge(mint, builder, owner);
         validatorToken = await userCharge(mint, validator, owner);
+        await ourCharge(mint, david, owner);
+        await ourCharge(mint, alex, owner);
         const [_pda, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
             [Buffer.from(anchor.utils.bytes.utf8.encode("staking"))],
             stakingProgram.programId
         );
         pda = _pda;
 
-        pool_vault = await poolVaultGen(mint, owner, owner);
+        pool_vault = await poolVaultGen(mint, owner.publicKey, owner);
+
 
         console.log("\tarchitect have ", architectToken.amount / 1000000000, " SNS");
         console.log("\tbuilder have ", builderToken.amount / 1000000000, " SNS");
