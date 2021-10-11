@@ -1,11 +1,9 @@
 use anchor_lang::Account;
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Burn, Mint, MintTo, TokenAccount, Transfer};
+use anchor_spl::token::{ID,self, Burn, Mint, MintTo, TokenAccount, Transfer};
 
 use datafarm::{self, Ctor, PoolAccount};
 use datafarm::Datafarm::PoolConfig as Pool;
-
-declare_id!("DQU8naysQoj3t9EEhDcFt8LUyGSTJrxMVXYFwviHshYF");
 
 #[program]
 pub mod Staking {
