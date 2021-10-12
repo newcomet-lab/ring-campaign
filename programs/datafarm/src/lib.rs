@@ -151,9 +151,9 @@ pub mod Datafarm {
         /// later should change to emit
         msg!(
             "{{ \"event\" : \"submit_utterance\",\
-            \"utterance_id\" : \"{:?}\",\
-            \"builder\" : \"{:?}\",\
-            \"architect\" : \"{:?}\",\
+            \"utterance_id\" : \"{}\",\
+            \"builder\" : \"{}\",\
+            \"architect\" : \"{}\"\
             }}",
             last_id,
             ctx.accounts.builder.key(),
@@ -169,22 +169,7 @@ pub mod Datafarm {
         campaign.update_utterance(utterance_id, status, validator);
         let utter = campaign.get_utterance(utterance_id);
         /// later should change to emit
-        msg!(
-            "{{ \"event\" : \"validate_utterance\",\
-            \"utterance_id\" : \"{:?}\",\
-            \"validator\" : \"{:?}\",\
-            \"builder\" : \"{:?}\",\
-            \"correct\" : \"{:?}\",\
-            \"incorrect\" : \"{:?}\",\
-            \"finish\" : \"{:?}\"\
-          }}",
-            utterance_id,
-            ctx.accounts.validator.key(),
-            utter.builder,
-            utter.correct,
-            utter.incorrect,
-            utter.finish
-        );
+
         Ok(())
     }
 }
@@ -391,6 +376,24 @@ impl CampaignAccount {
 
         if self.min_validator > self.utterances[utterance_id as usize].correct {
             self.utterances[utterance_id as usize].finish = true;
+            msg!(
+            "{{ \"event\" : \"validate_utterance\",\
+            \"utterance_id\" : \"{:?}\",\
+            \"data\" : \"{:?}\",\
+            \"validator\" : \"{:?}\",\
+            \"builder\" : \"{:?}\",\
+            \"correct\" : \"{:?}\",\
+            \"incorrect\" : \"{:?}\",\
+            \"finish\" : \"{:?}\"\
+          }}",
+            utterance_id,
+            self.utterances[utterance_id as usize].data,
+            validator,
+            self.utterances[utterance_id as usize].builder,
+            self.utterances[utterance_id as usize].correct,
+            self.utterances[utterance_id as usize].incorrect,
+            self.utterances[utterance_id as usize].finish
+        );
         }
         self.utterances[utterance_id as usize].validators
             [self.utterances[utterance_id as usize].head as usize] = validator;

@@ -34,6 +34,17 @@ pub mod Staking {
         stake.pending_reward = 0;
         stake.user_address = ctx.accounts.user_token.key();
         stake.status = true;
+        //
+        msg!(
+            "{{ \"event\" : \"stake\",\
+            \"amount\" : \"{}\",\
+            \"start_block\" : \"{}\",\
+            \"start_time\" : \"{}\"\
+          }}",
+            stake.token_amount,
+            stake.start_block,
+            stake.lock_in_time
+        );
         Ok(())
     }
 
