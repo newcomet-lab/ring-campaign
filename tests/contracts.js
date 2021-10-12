@@ -30,6 +30,8 @@ const stakingProgram = new anchor.Program(staking_idl, staking_idl.metadata.addr
 describe('datafarm', () => {
     anchor.setProvider(anchor.Provider.env());
     const provider = anchor.getProvider();
+    const dataID = "31hDFmNChHagkuXXkVHy34BJYyQHukefAC7FstJMEK7D";
+    const stakingID = "5dwxCdRvQAJS3cdborKzp47sPVPeDRL3pdqadN4sy8dp";
     const SNS = new anchor.web3.PublicKey("4x9tT6a8hjs6YztPJs9ZHUimQaxBetVFYTsDAAfh8Luz");
     const david = new anchor.web3.PublicKey("7aU7BDLoBQm8gmAiaDENQhbpPStzwfJPuM8a1JRhLPtv");
     const alex = new anchor.web3.PublicKey("8WQL2yB5yw9myW7Xo34sZ7eUTU2oME83BFi6Xa7Wwm1V");
@@ -41,8 +43,8 @@ describe('datafarm', () => {
         require('fs')
             .readFileSync('target/idl/Staking.json', 'utf8')
             .toString());
-    const dataProgram = new anchor.Program(data_idl, data_idl.metadata.address, anchor.getProvider());
-    const stakingProgram = new anchor.Program(staking_idl, staking_idl.metadata.address, anchor.getProvider());
+    const dataProgram = new anchor.Program(data_idl, dataID, anchor.getProvider());
+    const stakingProgram = new anchor.Program(staking_idl, stakingID, anchor.getProvider());
 
 
     const ks_hadi = fs.readFileSync("/home/hadi/.config/solana/id.json", {encoding: 'utf8'});
@@ -236,7 +238,7 @@ describe('datafarm', () => {
                 accounts: {
                     stakeAccount: myAccount.publicKey,
                     user: architect.publicKey,
-                    systemProgram: anchor.web3.SystemProgram.programId,
+                    //systemProgram: anchor.web3.SystemProgram.programId,
                     userToken: architectToken.address,
                     cpiState: dataProgram.state.address(),
                     datafarm: dataProgram.programId,

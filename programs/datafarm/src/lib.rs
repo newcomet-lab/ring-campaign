@@ -4,7 +4,9 @@ use std::fmt::{self, Debug, Display};
 use std::io::Write;
 
 use anchor_lang::prelude::*;
-use anchor_spl::token::{ID,self, Burn, Mint, MintTo, TokenAccount, Transfer};
+use anchor_spl::token::{self, Burn, Mint, MintTo, TokenAccount, Transfer, ID};
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Deserializer, Serializer};
 
 const SMALL: usize = 256;
 const MEDIUM: usize = 512;
@@ -31,14 +33,16 @@ pub mod Datafarm {
     }
 
     impl PoolConfig {
-        pub fn new(ctx: Context<Ctor>,
-                   architect_stake: u64,
-                   builder_stake: u64,
-                   validator_stake: u64,
-                   reward_apy: u8,
-                   pool_cap: u64,
-                   penalty: u64,
-                   reward_per_block: u64) -> Result<Self, ProgramError> {
+        pub fn new(
+            ctx: Context<Ctor>,
+            architect_stake: u64,
+            builder_stake: u64,
+            validator_stake: u64,
+            reward_apy: u8,
+            pool_cap: u64,
+            penalty: u64,
+            reward_per_block: u64,
+        ) -> Result<Self, ProgramError> {
             Ok(Self {
                 authority: ctx.accounts.authority.key(),
                 mint: ctx.accounts.mint.key(),
@@ -123,6 +127,9 @@ pub mod Datafarm {
         campaign.validation_quorum = validation_quorum;
         campaign.set_architect(*ctx.accounts.architect.key);
         pool.add_campaign(*ctx.accounts.architect.key);
+        /// later should change to emit
+        msg!("{{ \"event\" : \"create_campaign\",\"refrence_id\" : \"{:?}\", \"architect\" : \"{:?}\" }}",
+            campaign.refID,campaign.architect );
         Ok(())
     }
 
@@ -141,6 +148,17 @@ pub mod Datafarm {
             incorrect: 0,
             finish: false,
         });
+        /// later should change to emit
+        msg!(
+            "{{ \"event\" : \"submit_utterance\",\
+            \"utterance_id\" : \"{:?}\",\
+            \"builder\" : \"{:?}\",\
+            \"architect\" : \"{:?}\",\
+            }}",
+            last_id,
+            ctx.accounts.builder.key(),
+            campaign.architect
+        );
         Ok(())
     }
 
@@ -150,10 +168,23 @@ pub mod Datafarm {
         let validator = *ctx.accounts.validator.key;
         campaign.update_utterance(utterance_id, status, validator);
         let utter = campaign.get_utterance(utterance_id);
-        emit!(ValidateEvent {
-            user: ctx.accounts.validator.key(),
-            data: utter
-        });
+        /// later should change to emit
+        msg!(
+            "{{ \"event\" : \"validate_utterance\",\
+            \"utterance_id\" : \"{:?}\",\
+            \"validator\" : \"{:?}\",\
+            \"builder\" : \"{:?}\",\
+            \"correct\" : \"{:?}\",\
+            \"incorrect\" : \"{:?}\",\
+            \"finish\" : \"{:?}\"\
+          }}",
+            utterance_id,
+            ctx.accounts.validator.key(),
+            utter.builder,
+            utter.correct,
+            utter.incorrect,
+            utter.finish
+        );
         Ok(())
     }
 }
@@ -209,33 +240,6 @@ pub struct PoolAccount {
     pub reward_apy: u8,
     pub pool_cap: u64,
     pub penalty: u64,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Debug)]
-pub enum Events {
-    PoolInit,
-    PoolUpdate,
-    CampaignCreate,
-    UtteranceSubmit,
-    UtteranceValidate,
-}
-
-#[event]
-pub struct SynEvent {
-    pub kind: u8,
-    pub user: Pubkey,
-}
-
-#[event]
-pub struct ValidateEvent {
-    pub user: Pubkey,
-    pub data: Utterance,
-}
-
-impl fmt::Display for Events {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
 }
 
 /// Structure for access list checking
@@ -310,7 +314,7 @@ impl Default for CampaignAccount {
 }
 
 #[zero_copy]
-#[derive(AnchorSerialize, AnchorDeserialize, Debug)]
+#[derive(Debug)]
 pub struct Utterance {
     pub builder: Pubkey,
     pub head: u64,
@@ -370,10 +374,18 @@ impl CampaignAccount {
     fn update_utterance(&mut self, utterance_id: u64, status: bool, validator: Pubkey) {
         match status {
             true => {
-                self.utterances[utterance_id as usize].correct = self.utterances[utterance_id as usize].correct.checked_add(1).unwrap();
+                self.utterances[utterance_id as usize].correct = self.utterances
+                    [utterance_id as usize]
+                    .correct
+                    .checked_add(1)
+                    .unwrap();
             }
             false => {
-                self.utterances[utterance_id as usize].incorrect = self.utterances[utterance_id as usize].correct.checked_add(1).unwrap();;
+                self.utterances[utterance_id as usize].incorrect = self.utterances
+                    [utterance_id as usize]
+                    .correct
+                    .checked_add(1)
+                    .unwrap();
             }
         }
 
@@ -382,7 +394,10 @@ impl CampaignAccount {
         }
         self.utterances[utterance_id as usize].validators
             [self.utterances[utterance_id as usize].head as usize] = validator;
-        self.utterances[utterance_id as usize].head = self.utterances[utterance_id as usize].head.checked_add(1).unwrap();;
+        self.utterances[utterance_id as usize].head = self.utterances[utterance_id as usize]
+            .head
+            .checked_add(1)
+            .unwrap();
     }
     fn get_utterance(&mut self, utterance_id: u64) -> Utterance {
         self.utterances[utterance_id as usize].clone()

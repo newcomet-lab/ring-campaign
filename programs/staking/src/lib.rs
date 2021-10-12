@@ -1,9 +1,9 @@
-use anchor_lang::Account;
 use anchor_lang::prelude::*;
-use anchor_spl::token::{ID,self, Burn, Mint, MintTo, TokenAccount, Transfer};
+use anchor_lang::Account;
+use anchor_spl::token::{self, Burn, Mint, MintTo, TokenAccount, Transfer, ID};
 
-use datafarm::{self, Ctor, PoolAccount};
 use datafarm::Datafarm::PoolConfig as Pool;
+use datafarm::{self, Ctor, PoolAccount};
 
 #[program]
 pub mod Staking {
@@ -77,7 +77,6 @@ impl<'info> CloseStake<'info> {
 pub struct InitStake<'info> {
     #[account(zero)]
     stake_account: Loader<'info, stakeAccount>,
-    system_program: AccountInfo<'info>,
     #[account(signer)]
     user: AccountInfo<'info>,
     #[account(mut)]
