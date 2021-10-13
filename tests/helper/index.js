@@ -10,7 +10,6 @@ const TokenInstructions = require("@project-serum/serum").TokenInstructions;
 
 const userCharge = async (mint, owner, authority) => {
     const tokenAccount = await mint.getOrCreateAssociatedAccountInfo(owner.publicKey);
-
     await mint.mintTo(
         tokenAccount.address,
         authority,
