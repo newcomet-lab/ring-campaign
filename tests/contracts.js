@@ -523,7 +523,13 @@ describe('datafarm', () => {
 
     it("Check pool status", async () => {
         const pool = await dataProgram.state.fetch();
-        console.log("pool ",pool);
+        console.log("\tnumber of campaign ",pool.head.toNumber());
+    }).timeout(90000);
+
+    it("Get associated token account", async () => {
+       const tokenAccount = await mint.getOrCreateAssociatedAccountInfo(architect.publicKey);
+       console.log("\tAssociated accout for architect is",tokenAccount.address.toBase58())
+       assert.ok(tokenAccount.owner,architect.publicKey);
     }).timeout(90000);
 
 });
