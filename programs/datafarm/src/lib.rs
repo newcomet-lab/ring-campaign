@@ -114,7 +114,7 @@ pub mod Datafarm {
 
     pub fn utterance(ctx: Context<OnBuilder>, msg: String) -> ProgramResult {
         let campaign = &mut ctx.accounts.campaign_account.load_mut()?;
-        let pool = &mut ctx.accounts.pool.load_mut()?;
+        let pool = &mut ctx.accounts.pool;
         let given_msg = msg.as_bytes();
         let mut data = [0u8; 256];
         data[..given_msg.len()].copy_from_slice(given_msg);
@@ -143,7 +143,7 @@ pub mod Datafarm {
 
     pub fn validate(ctx: Context<OnValidator>, utterance_id: u64, status: bool) -> ProgramResult {
         let campaign = &mut ctx.accounts.campaign_account.load_mut()?;
-        let pool = &mut ctx.accounts.pool.load_mut()?;
+        let pool = &mut ctx.accounts.pool;
         let validator = *ctx.accounts.validator.key;
         campaign.update_utterance(utterance_id, status, validator);
         let utter = campaign.get_utterance(utterance_id);
@@ -401,8 +401,10 @@ impl CampaignAccount {
 pub struct OnBuilder<'info> {
     #[account(signer)]
     pub builder: AccountInfo<'info>,
-    #[account(mut)]
-    pub pool: Loader<'info, PoolAccount>,
+    #[account(mut, state = datafarm)]
+    pub pool: CpiState<'info, PoolConfig>,
+    #[account(executable)]
+    pub datafarm: AccountInfo<'info>,
     #[account(mut)]
     pub campaign_account: Loader<'info, CampaignAccount>,
 }
@@ -411,8 +413,10 @@ pub struct OnBuilder<'info> {
 pub struct OnValidator<'info> {
     #[account(signer)]
     pub validator: AccountInfo<'info>,
-    #[account(mut)]
-    pub pool: Loader<'info, PoolAccount>,
+    #[account(mut, state = datafarm)]
+    pub pool: CpiState<'info, PoolConfig>,
+    #[account(executable)]
+    pub datafarm: AccountInfo<'info>,
     #[account(mut)]
     pub campaign_account: Loader<'info, CampaignAccount>,
 }
