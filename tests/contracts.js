@@ -143,8 +143,8 @@ describe('datafarm', () => {
         assert.ok(change_vault.owner,pda);
     }).timeout(90000);
 
-/*    it("Create Campaign by architect", async () => {
-        const pool = await dataProgram.account.poolAccount.fetch(admin.publicKey);
+    it("Create Campaign by architect", async () => {
+        const pool = await dataProgram.state.fetch();
         const offChainReference = new anchor.BN(1213);
         const period = new anchor.BN(14);
         const min_builder = new anchor.BN(5);
@@ -173,7 +173,8 @@ describe('datafarm', () => {
                 accounts: {
                     campaignAccount: architect.publicKey,
                     architect: architect.publicKey,
-                    pool: admin.publicKey,
+                    pool: dataProgram.state.address(),
+                    datafarm: dataProgram.programId,
                     tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
                 },
                 instructions: [
@@ -212,6 +213,7 @@ describe('datafarm', () => {
         const stake = await stakingProgram.account.stakeAccount.fetch(myAccount.publicKey);
         assert.ok(stake.status, true)
     }).timeout(20000);
+    /*
     it("Architect unstake", async () => {
         const campaignAddr = await dataProgram.account.campaignAccount.associatedAddress(architect.publicKey);
 

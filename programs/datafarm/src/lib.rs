@@ -8,6 +8,7 @@ use anchor_spl::token::{self, Burn, Mint, MintTo,SetAuthority, TokenAccount, Tra
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Deserializer, Serializer};
 use spl_token::instruction::AuthorityType;
+use crate::Datafarm::PoolConfig;
 
 const SMALL: usize = 256;
 const MEDIUM: usize = 512;
@@ -87,9 +88,12 @@ pub mod Datafarm {
         explain: String,
         phrase: String,
     ) -> ProgramResult {
-        let pool = &mut ctx.accounts.pool.load_mut()?;
+        let pool = &mut ctx.accounts.pool;
         let campaign = &mut ctx.accounts.campaign_account.load_init()?;
-        campaign.reward_token = pool.sns_mint;
+        let head = pool.head ;
+        pool.campaigns[head as usize] = *ctx.accounts.architect.key;
+        pool.head =head+1;
+        campaign.reward_token = pool.mint;
         campaign.refID = off_chain_reference;
         campaign.min_builder = min_builder;
         campaign.min_validator = min_validator;
@@ -102,7 +106,6 @@ pub mod Datafarm {
         campaign.reward_per_validator = reward_per_validator;
         campaign.validation_quorum = validation_quorum;
         campaign.set_architect(*ctx.accounts.architect.key);
-        pool.add_campaign(*ctx.accounts.architect.key);
         /// later should change to emit
         msg!("{{ \"event\" : \"create_campaign\",\"refrence_id\" : \"{:?}\", \"architect\" : \"{:?}\" }}",
             campaign.refID,campaign.architect );
@@ -221,8 +224,10 @@ pub struct CreateCampaign<'info> {
     campaign_account: Loader<'info, CampaignAccount>,
     #[account(signer)]
     architect: AccountInfo<'info>,
-    #[account(mut)]
-    pool: Loader<'info, PoolAccount>,
+    #[account(mut, state = datafarm)]
+    pub pool: CpiState<'info, PoolConfig>,
+    #[account(executable)]
+    pub datafarm: AccountInfo<'info>,
     #[account("token_program.key == &token::ID")]
     token_program: AccountInfo<'info>,
 }
@@ -429,4 +434,7 @@ pub fn string_medium(input: String) -> [u8; MEDIUM] {
     let mut out = [0u8; MEDIUM];
     out[..given_input.len()].copy_from_slice(given_input);
     out
+}
+pub fn pindex_of(counter: u64) -> usize {
+    std::convert::TryInto::try_into(counter % 256).unwrap()
 }
