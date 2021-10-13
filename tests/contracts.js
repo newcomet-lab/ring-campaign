@@ -113,6 +113,9 @@ describe('datafarm', () => {
         console.log("\tbuilder have ", builderToken.amount / 1000000000, " SNS");
         console.log("\tvalidator have ", validatorToken.amount / 1000000000, " SNS");
         console.log("\tvault is ", pool_vault.address.toBase58());
+        console.log("\tarchitectToken is ", architectToken.address.toBase58());
+        console.log("\tbuilderToken is ", builderToken.address.toBase58());
+        console.log("\tvalidatorToken is ", validatorToken.address.toBase58());
         assert.ok(architect.publicKey.equals(architectToken.owner));
         assert.ok(builder.publicKey.equals(builderToken.owner));
         assert.ok(validator.publicKey.equals(validatorToken.owner));
