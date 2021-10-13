@@ -3,13 +3,13 @@ use anchor_lang::Account;
 use anchor_spl::token::{self, Burn, Mint, MintTo, TokenAccount, Transfer, ID};
 
 use datafarm::Datafarm::PoolConfig as Pool;
-use datafarm::{self, Ctor, PoolAccount};
+use datafarm::{self, PoolAccount};
 
 #[program]
 pub mod Staking {
     use super::*;
 
-    const PDA_SEED: &[u8] = b"staking";
+    const PDA_SEED: &[u8] = b"Staking";
 
     pub fn stake(ctx: Context<InitStake>) -> ProgramResult {
         let stake = &mut ctx.accounts.stake_account.load_init()?;

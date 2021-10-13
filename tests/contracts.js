@@ -43,8 +43,8 @@ describe('datafarm', () => {
         require('fs')
             .readFileSync('target/idl/Staking.json', 'utf8')
             .toString());
-    const dataProgram = new anchor.Program(data_idl, dataID, anchor.getProvider());
-    const stakingProgram = new anchor.Program(staking_idl, stakingID, anchor.getProvider());
+    const dataProgram = new anchor.Program(data_idl, data_idl.metadata.address, anchor.getProvider());
+    const stakingProgram = new anchor.Program(staking_idl, staking_idl.metadata.address, anchor.getProvider());
 
 
     const ks_hadi = fs.readFileSync("/home/hadi/.config/solana/id.json", {encoding: 'utf8'});
@@ -103,18 +103,16 @@ describe('datafarm', () => {
         await ourCharge(mint, david, owner);
         await ourCharge(mint, alex, owner);
         const [_pda, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-            [Buffer.from(anchor.utils.bytes.utf8.encode("staking"))],
+            [Buffer.from(anchor.utils.bytes.utf8.encode("Staking"))],
             stakingProgram.programId
         );
         pda = _pda;
 
-        pool_vault = await poolVaultGen(mint, owner.publicKey, owner);
-
-
+        pool_vault = await poolVaultGen(mint, admin.publicKey, owner);
         console.log("\tarchitect have ", architectToken.amount / 1000000000, " SNS");
         console.log("\tbuilder have ", builderToken.amount / 1000000000, " SNS");
         console.log("\tvalidator have ", validatorToken.amount / 1000000000, " SNS");
-        console.log("\t vault is ", validatorToken.address.toBase58());
+        console.log("\t vault is ", pool_vault.address.toBase58());
         assert.ok(architect.publicKey.equals(architectToken.owner));
         assert.ok(builder.publicKey.equals(builderToken.owner));
         assert.ok(validator.publicKey.equals(validatorToken.owner));
@@ -134,59 +132,18 @@ describe('datafarm', () => {
                 accounts: {
                     authority: admin.publicKey,
                     mint: mint.publicKey,
-                    vault: pool_vault.address
-                }
-            });
-    });
-    it("Creates Mining Pool", async () => {
-        const architect_stake = new anchor.BN(20);
-        const builder_stake = new anchor.BN(20);
-        const validator_stake = new anchor.BN(20);
-        const reward_apy = 10;
-        const pool_cap = new anchor.BN(250000000);
-        const penalty = new anchor.BN(2);
-
-        const transaction = await dataProgram.rpc.initPool(
-            architect_stake, builder_stake, validator_stake,
-            reward_apy, pool_cap, penalty,
-            {
-                accounts: {
-                    poolAccount: admin.publicKey,
-                    poolAuthority: user.publicKey,
-                    sns: mint.publicKey
-                },
-                signers: [admin],
-                instructions: [await dataProgram.account.poolAccount.createInstruction(admin)],
-
-            });
-        const pool = await dataProgram.account.poolAccount.fetch(admin.publicKey);
-        assert.ok(pool.snsMint.equals(mint.publicKey));
-        assert.ok(pool.authority.equals(user.publicKey));
-        assert.ok(pool.architectStake.eq(architect_stake));
-        assert.ok(pool.builderStake.eq(builder_stake));
-        assert.ok(pool.validatorStake.eq(validator_stake));
-        assert.ok(pool.poolCap.eq(pool_cap));
-        assert.ok(pool.penalty.eq(penalty));
-        assert.ok(pool.rewardApy === reward_apy);
-    }).timeout(10000);
-    it("Update Mining Pool APY", async () => {
-        const previous_pool = await dataProgram.account.poolAccount.fetch(admin.publicKey);
-        const newApy = 13;
-        const transaction = await dataProgram.rpc.updatePool(newApy, new_authority.publicKey,
-            {
-                accounts: {
-                    poolAccount: admin.publicKey,
-                    authority: admin.publicKey
+                    vault: pool_vault.address,
+                    stakingProgram : stakingProgram.programId,
+                    tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
                 },
                 signers: [admin]
             });
-        const pool = await dataProgram.account.poolAccount.fetch(admin.publicKey);
-        const pooladdress = await dataProgram.account.poolAccount.associatedAddress(admin.publicKey);
+        let pool = await dataProgram.state.fetch();
+        const change_vault = await mint.getAccountInfo(pool.vault);
+        assert.ok(change_vault.owner,pda);
+    }).timeout(90000);
 
-        assert.ok(pool.rewardApy === newApy);
-        assert.ok(previous_pool.rewardApy !== pool.rewardApy);
-    }).timeout(20000);
-    it("Create Campaign by architect", async () => {
+/*    it("Create Campaign by architect", async () => {
         const pool = await dataProgram.account.poolAccount.fetch(admin.publicKey);
         const offChainReference = new anchor.BN(1213);
         const period = new anchor.BN(14);
@@ -527,6 +484,6 @@ describe('datafarm', () => {
                 "\n\tvalidation status :", campaign.utterances[j].finish
             );
         }
-    }).timeout(90000);
+    }).timeout(90000);*/
 });
 

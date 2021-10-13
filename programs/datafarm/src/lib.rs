@@ -4,9 +4,10 @@ use std::fmt::{self, Debug, Display};
 use std::io::Write;
 
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Burn, Mint, MintTo, TokenAccount, Transfer, ID};
+use anchor_spl::token::{self, Burn, Mint, MintTo,SetAuthority, TokenAccount, Transfer, ID};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Deserializer, Serializer};
+use spl_token::instruction::AuthorityType;
 
 const SMALL: usize = 256;
 const MEDIUM: usize = 512;
@@ -14,7 +15,7 @@ const MEDIUM: usize = 512;
 #[program]
 pub mod Datafarm {
     use super::*;
-
+    const PDA_SEED: &[u8] = b"Staking";
     #[state]
     pub struct PoolConfig {
         pub reward_per_block: u64,
@@ -34,7 +35,7 @@ pub mod Datafarm {
 
     impl PoolConfig {
         pub fn new(
-            ctx: Context<Ctor>,
+            ctx: Context<InitPool>,
             architect_stake: u64,
             builder_stake: u64,
             validator_stake: u64,
@@ -43,6 +44,8 @@ pub mod Datafarm {
             penalty: u64,
             reward_per_block: u64,
         ) -> Result<Self, ProgramError> {
+            let (pda, _bump_seed) = Pubkey::find_program_address(&[PDA_SEED], ctx.accounts.staking_program.key);
+            token::set_authority(ctx.accounts.into(), AuthorityType::AccountOwner, Some(pda))?;
             Ok(Self {
                 authority: ctx.accounts.authority.key(),
                 mint: ctx.accounts.mint.key(),
@@ -60,7 +63,7 @@ pub mod Datafarm {
             })
         }
 
-        pub fn update_reward(&mut self, ctx: Context<Ctor>, reward: u64) -> ProgramResult {
+        pub fn update_reward(&mut self, ctx: Context<UpdatePool>, reward: u64) -> ProgramResult {
             self.reward_per_block = reward;
             Ok(())
         }
@@ -68,33 +71,6 @@ pub mod Datafarm {
 
     const CONTRACT_PDA_SEED: &[u8] = b"synesis";
 
-    pub fn init_pool(
-        ctx: Context<initPool>,
-        architect_stake: u64,
-        builder_stake: u64,
-        validator_stake: u64,
-        reward_apy: u8,
-        pool_cap: u64,
-        penalty: u64,
-    ) -> ProgramResult {
-        let pool = &mut ctx.accounts.pool_account.load_init()?;
-        pool.sns_mint = *ctx.accounts.sns.key;
-        pool.authority = *ctx.accounts.pool_authority.key;
-        pool.reward_apy = reward_apy;
-        pool.penalty = penalty;
-        pool.pool_cap = pool_cap;
-        pool.architect_stake = architect_stake;
-        pool.builder_stake = builder_stake;
-        pool.validator_stake = validator_stake;
-        Ok(())
-    }
-
-    pub fn update_pool(ctx: Context<updatePool>, apy: u8, authority: Pubkey) -> ProgramResult {
-        let pool = &mut ctx.accounts.pool_account.load_mut()?;
-        pool.authority = authority;
-        pool.reward_apy = apy;
-        Ok(())
-    }
 
     //#[access_control(CreateCampaign::accounts(&ctx, nonce))]
     pub fn create_campaign(
@@ -175,12 +151,36 @@ pub mod Datafarm {
 }
 
 #[derive(Accounts)]
-pub struct Ctor<'info> {
+pub struct InitPool<'info> {
+    #[account(signer)]
     authority: AccountInfo<'info>,
+    staking_program: AccountInfo<'info>,
+    #[account(mut)]
     vault: CpiAccount<'info, TokenAccount>,
     mint: CpiAccount<'info, Mint>,
+    #[account("token_program.key == &token::ID")]
+    token_program: AccountInfo<'info>,
 }
 
+#[derive(Accounts)]
+pub struct UpdatePool<'info> {
+    authority: AccountInfo<'info>,
+}
+impl<'info> From<&mut InitPool<'info>>
+for CpiContext<'_, '_, '_, 'info, SetAuthority<'info>>
+{
+    fn from(accounts: &mut InitPool<'info>) -> Self {
+        let cpi_accounts = SetAuthority {
+            account_or_mint: accounts
+                .vault
+                .to_account_info()
+                .clone(),
+            current_authority: accounts.authority.clone(),
+        };
+        let cpi_program = accounts.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
 // Prevent duplicate ontology per campaign
 fn check_campaign<'info>(campaign_account: &Loader<'info, CampaignAccount>) -> ProgramResult {
     let campaign = campaign_account.load()?;
@@ -190,25 +190,6 @@ fn check_campaign<'info>(campaign_account: &Loader<'info, CampaignAccount>) -> P
         Err(ProgramError::AccountAlreadyInitialized)
     }
 }
-
-/// Pool Initialization accounts and set authority
-#[derive(Accounts)]
-pub struct initPool<'info> {
-    #[account(zero)]
-    pub pool_account: Loader<'info, PoolAccount>,
-    pub pool_authority: AccountInfo<'info>,
-    pub sns: AccountInfo<'info>,
-}
-
-/// Account to update pool authority
-#[derive(Accounts)]
-pub struct updatePool<'info> {
-    #[account(mut)]
-    pub pool_account: Loader<'info, PoolAccount>,
-    #[account(signer)]
-    pub authority: AccountInfo<'info>,
-}
-
 /// Structure of pool initialization
 #[account(zero_copy)]
 pub struct PoolAccount {
