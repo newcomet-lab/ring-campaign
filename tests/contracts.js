@@ -108,11 +108,11 @@ describe('datafarm', () => {
         );
         pda = _pda;
 
-        pool_vault = await poolVaultGen(mint, admin.publicKey, owner);
+        pool_vault = await userCharge(mint, admin, owner);
         console.log("\tarchitect have ", architectToken.amount / 1000000000, " SNS");
         console.log("\tbuilder have ", builderToken.amount / 1000000000, " SNS");
         console.log("\tvalidator have ", validatorToken.amount / 1000000000, " SNS");
-        console.log("\t vault is ", pool_vault.address.toBase58());
+        console.log("\tvault is ", pool_vault.address.toBase58());
         assert.ok(architect.publicKey.equals(architectToken.owner));
         assert.ok(builder.publicKey.equals(builderToken.owner));
         assert.ok(validator.publicKey.equals(validatorToken.owner));
@@ -157,7 +157,7 @@ describe('datafarm', () => {
         const topic_explain = "here is my explain";
         const seed_phrase = "write sentence about solana";
         const CampaignSeed = 'CampaignCreate';
-        await dataProgram.rpc.createCampaign(
+        await dataProgram.state.rpc.createCampaign(
             offChainReference,
             period,
             min_builder,
@@ -249,7 +249,7 @@ describe('datafarm', () => {
         const topic_explain = "here is my explain";
         const seed_phrase = "write sentence about solana";
         const CampaignSeed = 'CampaignCreate';
-        await dataProgram.rpc.createCampaign(
+        await dataProgram.state.rpc.createCampaign(
             offChainReference,
             period,
             min_builder,
@@ -478,6 +478,7 @@ describe('datafarm', () => {
 
     }).timeout(90000);
 
+
     it("Get the current status of Ontology", async () => {
         let pool = await dataProgram.state.fetch();
         const campaign = await dataProgram.account.campaignAccount.fetch(architect.publicKey);
@@ -496,5 +497,11 @@ describe('datafarm', () => {
             );
         }
     }).timeout(90000);
+
+    it("Check pool status", async () => {
+        const pool = await dataProgram.state.fetch();
+        console.log("pool ",pool);
+    }).timeout(90000);
+
 });
 

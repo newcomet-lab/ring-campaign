@@ -8,8 +8,7 @@ use anchor_spl::token::{self, Burn, Mint, MintTo,SetAuthority, TokenAccount, Tra
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Deserializer, Serializer};
 use spl_token::instruction::AuthorityType;
-use crate::Datafarm::PoolConfig;
-
+use Datafarm::PoolConfig as PoolState;
 const SMALL: usize = 256;
 const MEDIUM: usize = 512;
 
@@ -48,7 +47,7 @@ pub mod Datafarm {
             let (pda, _bump_seed) = Pubkey::find_program_address(&[PDA_SEED], ctx.accounts.staking_program.key);
             token::set_authority(ctx.accounts.into(), AuthorityType::AccountOwner, Some(pda))?;
             Ok(Self {
-                authority: ctx.accounts.authority.key(),
+                authority: pda.key(),
                 mint: ctx.accounts.mint.key(),
                 vault: ctx.accounts.vault.key(),
                 head: 0,
@@ -63,6 +62,43 @@ pub mod Datafarm {
                 penalty,
             })
         }
+        pub fn create_campaign(
+            &mut self,
+            ctx: Context<CreateCampaign>,
+            off_chain_reference: u64,
+            period: u64,
+            min_builder: u64,
+            min_validator: u64,
+            reward_per_builder: u64,
+            reward_per_validator: u64,
+            validation_quorum: u8,
+            domain: String,
+            subject: String,
+            explain: String,
+            phrase: String,
+        ) -> ProgramResult {
+            let pool = &mut ctx.accounts.pool;
+            let campaign = &mut ctx.accounts.campaign_account.load_init()?;
+            self.campaigns[self.head as usize] = ctx.accounts.architect.key();
+            self.head +=1;
+            campaign.reward_token = pool.mint;
+            campaign.refID = off_chain_reference;
+            campaign.min_builder = min_builder;
+            campaign.min_validator = min_validator;
+            campaign.time_limit = period;
+            campaign.domain = string_small(domain);
+            campaign.subject = string_small(subject);
+            campaign.explain = string_medium(explain);
+            campaign.phrase = string_medium(phrase);
+            campaign.reward_per_builder = reward_per_builder;
+            campaign.reward_per_validator = reward_per_validator;
+            campaign.validation_quorum = validation_quorum;
+            campaign.set_architect(*ctx.accounts.architect.key);
+            /// later should change to emit
+            msg!("{{ \"event\" : \"create_campaign\",\"refrence_id\" : \"{:?}\", \"architect\" : \"{:?}\" }}",
+            campaign.refID,campaign.architect );
+            Ok(())
+        }
 
         pub fn update_reward(&mut self, ctx: Context<UpdatePool>, reward: u64) -> ProgramResult {
             self.reward_per_block = reward;
@@ -74,43 +110,7 @@ pub mod Datafarm {
 
 
     //#[access_control(CreateCampaign::accounts(&ctx, nonce))]
-    pub fn create_campaign(
-        ctx: Context<CreateCampaign>,
-        off_chain_reference: u64,
-        period: u64,
-        min_builder: u64,
-        min_validator: u64,
-        reward_per_builder: u64,
-        reward_per_validator: u64,
-        validation_quorum: u8,
-        domain: String,
-        subject: String,
-        explain: String,
-        phrase: String,
-    ) -> ProgramResult {
-        let pool = &mut ctx.accounts.pool;
-        let campaign = &mut ctx.accounts.campaign_account.load_init()?;
-        let head = pool.head ;
-        pool.campaigns[head as usize] = *ctx.accounts.architect.key;
-        pool.head =head+1;
-        campaign.reward_token = pool.mint;
-        campaign.refID = off_chain_reference;
-        campaign.min_builder = min_builder;
-        campaign.min_validator = min_validator;
-        campaign.time_limit = period;
-        campaign.domain = string_small(domain);
-        campaign.subject = string_small(subject);
-        campaign.explain = string_medium(explain);
-        campaign.phrase = string_medium(phrase);
-        campaign.reward_per_builder = reward_per_builder;
-        campaign.reward_per_validator = reward_per_validator;
-        campaign.validation_quorum = validation_quorum;
-        campaign.set_architect(*ctx.accounts.architect.key);
-        /// later should change to emit
-        msg!("{{ \"event\" : \"create_campaign\",\"refrence_id\" : \"{:?}\", \"architect\" : \"{:?}\" }}",
-            campaign.refID,campaign.architect );
-        Ok(())
-    }
+
 
     pub fn utterance(ctx: Context<OnBuilder>, msg: String) -> ProgramResult {
         let campaign = &mut ctx.accounts.campaign_account.load_mut()?;
@@ -152,6 +152,9 @@ pub mod Datafarm {
         Ok(())
     }
 }
+
+#[derive(Accounts)]
+pub struct Empty {}
 
 #[derive(Accounts)]
 pub struct InitPool<'info> {
