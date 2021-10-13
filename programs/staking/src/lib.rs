@@ -61,11 +61,14 @@ pub mod Staking {
             .checked_sub(stake.start_block)
             .unwrap()
             .checked_mul(state.reward_per_block)
+            .unwrap()
+            .checked_mul(1_000_000_000)
             .unwrap();
         stake.status = false;
+        let token_and_reward = stake.pending_reward.checked_add(stake.token_amount).unwrap();
         token::transfer(
             ctx.accounts.to_taker().with_signer(&[&seeds[..]]),
-            stake.token_amount,
+            token_and_reward,
         )?;
 
         Ok(())

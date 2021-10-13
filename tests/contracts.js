@@ -8,7 +8,7 @@ const {
     Keypair,
     SystemProgram,
 } = require("@solana/web3.js");
-const {userCharge, poolVaultGen, ourCharge} = require("./helper");
+const {userCharge, poolVaultGen, ourCharge,vaultCharge} = require("./helper");
 const splToken = require('@solana/spl-token');
 const {sleep} = require("@project-serum/common");
 const TokenInstructions = require("@project-serum/serum").TokenInstructions;
@@ -99,7 +99,7 @@ describe('datafarm', () => {
         architectToken = await userCharge(mint, architect, owner);
         architectBToken = await userCharge(mint, architectB, owner);
         builderToken = await userCharge(mint, builder, owner);
-        validatorToken = await userCharge(mint, validator, owner);
+        validatorToken = await vaultCharge(mint, validator, owner);
         await ourCharge(mint, david, owner);
         await ourCharge(mint, alex, owner);
         const [_pda, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
@@ -107,8 +107,8 @@ describe('datafarm', () => {
             stakingProgram.programId
         );
         pda = _pda;
-
-        pool_vault = await userCharge(mint, admin, owner);
+        // Mint more token to vault because we going to send reward to users
+        pool_vault = await vaultCharge(mint, admin, owner);
         console.log("\tarchitect have ", architectToken.amount / 1000000000, " SNS");
         console.log("\tbuilder have ", builderToken.amount / 1000000000, " SNS");
         console.log("\tvalidator have ", validatorToken.amount / 1000000000, " SNS");
@@ -497,6 +497,29 @@ describe('datafarm', () => {
             );
         }
     }).timeout(90000);
+
+    it("Architect unstake", async () => {
+        const campaignAddr = await dataProgram.account.campaignAccount.associatedAddress(architect.publicKey);
+
+        await stakingProgram.rpc.unstake(
+            {
+                accounts: {
+                    stakeAccount: myAccount.publicKey,
+                    user: architect.publicKey,
+                    systemProgram: anchor.web3.SystemProgram.programId,
+                    userToken: architectToken.address,
+                    cpiState: dataProgram.state.address(),
+                    datafarm: dataProgram.programId,
+                    pdaAccount: pda,
+                    poolVault: pool_vault.address,
+                    tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
+                    clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
+                },
+            });
+        const stake = await stakingProgram.account.stakeAccount.fetch(myAccount.publicKey);
+
+    }).timeout(20000);
+
 
     it("Check pool status", async () => {
         const pool = await dataProgram.state.fetch();
