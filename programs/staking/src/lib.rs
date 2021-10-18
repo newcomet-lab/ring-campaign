@@ -1,9 +1,9 @@
 use anchor_lang::prelude::*;
 use anchor_lang::Account;
 use anchor_spl::token::{self, Burn, Mint, MintTo, TokenAccount, Transfer, ID};
-
+use anchor_lang::solana_program::program_option::COption;
 use datafarm::Datafarm::PoolConfig as Pool;
-use datafarm::{self, PoolAccount};
+
 
 #[program]
 pub mod Staking {
@@ -102,7 +102,10 @@ pub struct InitStake<'info> {
     stake_account: Loader<'info, stakeAccount>,
     #[account(signer)]
     user: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+    constraint = user_token.amount >= cpi_state.architect_stake,
+    constraint = user_token.owner == *user.key
+    )]
     user_token: CpiAccount<'info, TokenAccount>,
     #[account(mut, state = datafarm)]
     pub cpi_state: CpiState<'info, Pool>,
@@ -121,7 +124,8 @@ pub struct CloseStake<'info> {
     #[account(mut)]
     stake_account: Loader<'info, stakeAccount>,
     user: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+    constraint = user_token.amount >= cpi_state.architect_stake)]
     user_token: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
     pool_vault: CpiAccount<'info, TokenAccount>,

@@ -2,7 +2,7 @@
 
 use std::fmt::{self, Debug, Display};
 use std::io::Write;
-
+use anchor_lang::solana_program::program_option::COption;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, Mint, MintTo,SetAuthority, TokenAccount, Transfer, ID};
 use serde::{Deserialize, Serialize};
@@ -91,7 +91,7 @@ pub mod Datafarm {
         ) -> ProgramResult {
             let pool = &mut ctx.accounts.pool;
             let campaign = &mut ctx.accounts.campaign_account.load_init()?;
-            self.campaigns[self.head as usize] = ctx.accounts.architect.key();
+            self.campaigns[self.head as usize] = ctx.accounts.campaign_account.key();
             self.head +=1;
             campaign.reward_token = pool.mint;
             campaign.refID = off_chain_reference;
@@ -105,13 +105,15 @@ pub mod Datafarm {
             campaign.reward_per_builder = reward_per_builder;
             campaign.reward_per_validator = reward_per_validator;
             campaign.validation_quorum = validation_quorum;
-            campaign.set_architect(*ctx.accounts.architect.key);
+            campaign.set_architect(ctx.accounts.campaign_account.key());
             /// later should change to emit
             msg!("{{ \"event\" : \"create_campaign\",\"refrence_id\" : \"{:?}\", \"architect\" : \"{:?}\" }}",
             campaign.refID,campaign.architect );
             Ok(())
         }
-
+        pub fn stake_campaign(&mut self, ctx: Context<StakeCampaign>)-> ProgramResult {
+            Ok(())
+        }
         pub fn update_reward(&mut self, ctx: Context<UpdatePool>, reward: u64) -> ProgramResult {
             self.reward_per_block = reward;
             Ok(())
@@ -120,10 +122,7 @@ pub mod Datafarm {
 
     const CONTRACT_PDA_SEED: &[u8] = b"synesis";
 
-
     //#[access_control(CreateCampaign::accounts(&ctx, nonce))]
-
-
     pub fn utterance(ctx: Context<OnBuilder>, msg: String) -> ProgramResult {
         let campaign = &mut ctx.accounts.campaign_account.load_mut()?;
         let pool = &mut ctx.accounts.pool;
@@ -173,7 +172,8 @@ pub struct InitPool<'info> {
     #[account(signer)]
     authority: AccountInfo<'info>,
     staking_program: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+    constraint = vault.owner == *authority.key)]
     vault: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
     mint: CpiAccount<'info, Mint>,
@@ -210,23 +210,6 @@ fn check_campaign<'info>(campaign_account: &Loader<'info, CampaignAccount>) -> P
         Err(ProgramError::AccountAlreadyInitialized)
     }
 }
-/// Structure of pool initialization
-#[account(zero_copy)]
-pub struct PoolAccount {
-    pub admin: Pubkey,
-    pub sns_mint: Pubkey,
-    pub token_vault: Pubkey,
-    pub authority: Pubkey,
-    pub head: u64,
-    pub tail: u64,
-    pub campaigns: [Pubkey; 128],
-    pub architect_stake: u64,
-    pub builder_stake: u64,
-    pub validator_stake: u64,
-    pub reward_apy: u8,
-    pub pool_cap: u64,
-    pub penalty: u64,
-}
 
 /// Structure for access list checking
 #[derive(Accounts)]
@@ -248,6 +231,15 @@ pub struct CreateCampaign<'info> {
     #[account("token_program.key == &token::ID")]
     token_program: AccountInfo<'info>,
 }
+#[derive(Accounts)]
+pub struct StakeCampaign<'info> {
+    #[account(mut)]
+    campaign_account: Loader<'info, CampaignAccount>,
+    #[account(signer)]
+    architect: AccountInfo<'info>,
+    #[account("token_program.key == &token::ID")]
+    token_program: AccountInfo<'info>,
+}
 
 /// Campaign Structure
 #[account(zero_copy)]
@@ -256,8 +248,7 @@ pub struct CampaignAccount {
     pub head: u64,
     pub tail: u64,
     pub architect: Pubkey,
-    pub architect_stake_amount: u64,
-    pub architect_stake_period: u64,
+    pub stake_status: bool,
     pub min_builder: u64,
     pub min_validator: u64,
     pub reward_per_builder: u64,
@@ -281,8 +272,7 @@ impl Default for CampaignAccount {
             head: 0,
             tail: 0,
             architect: Pubkey::default(),
-            architect_stake_amount: 0,
-            architect_stake_period: 0,
+            stake_status: false,
             min_builder: 0,
             min_validator: 0,
             reward_per_builder: 0,
@@ -333,19 +323,6 @@ pub struct Validate {
     pub status: bool,
 }
 
-impl PoolAccount {
-    fn add_campaign(&mut self, campaign: Pubkey) -> u64 {
-        self.campaigns[CampaignAccount::index_of(self.head)] = campaign;
-        if PoolAccount::index_of(self.head + 1) == PoolAccount::index_of(self.tail) {
-            self.tail += 1;
-        }
-        self.head += 1;
-        self.head
-    }
-    fn index_of(counter: u64) -> usize {
-        std::convert::TryInto::try_into(counter % 256).unwrap()
-    }
-}
 
 impl CampaignAccount {
     fn set_architect(&mut self, architect: Pubkey) {
