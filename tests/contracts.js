@@ -93,22 +93,25 @@ describe('datafarm', () => {
         assert.ok(true);
     }).timeout(90000);
     it("Airdrop SNS token to users", async () => {
-
-        mint = await splToken.Token.createMint(provider.connection, owner, owner.publicKey, null, 9, splToken.TOKEN_PROGRAM_ID,)
+        await provider.connection.confirmTransaction(
+            await provider.connection.requestAirdrop(admin.publicKey, 100000000000),
+            "confirmed"
+        );
+        mint = await splToken.Token.createMint(provider.connection, admin, admin.publicKey, null, 9, splToken.TOKEN_PROGRAM_ID,)
         console.log('\tSNS Token public address: ' + mint.publicKey.toBase58());
-        architectToken = await userCharge(mint, architect, owner);
-        architectBToken = await userCharge(mint, architectB, owner);
-        builderToken = await userCharge(mint, builder, owner);
-        validatorToken = await vaultCharge(mint, validator, owner);
-        await ourCharge(mint, david, owner);
-        await ourCharge(mint, alex, owner);
+        architectToken = await userCharge(mint, architect, admin);
+        architectBToken = await userCharge(mint, architectB, admin);
+        builderToken = await userCharge(mint, builder, admin);
+        validatorToken = await vaultCharge(mint, validator, admin);
+        await ourCharge(mint, david, admin);
+        await ourCharge(mint, alex, admin);
         const [_pda, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
             [Buffer.from(anchor.utils.bytes.utf8.encode("Staking"))],
             stakingProgram.programId
         );
         pda = _pda;
         // Mint more token to vault because we going to send reward to users
-        pool_vault = await vaultCharge(mint, admin, owner);
+        pool_vault = await vaultCharge(mint, admin, admin);
         console.log("\tarchitect have ", architectToken.amount / 1000000000, " SNS");
         console.log("\tbuilder have ", builderToken.amount / 1000000000, " SNS");
         console.log("\tvalidator have ", validatorToken.amount / 1000000000, " SNS");
@@ -230,6 +233,7 @@ describe('datafarm', () => {
                     cpiState: dataProgram.state.address(),
                     datafarm: dataProgram.programId,
                     pdaAccount: pda,
+                    tokenMint:mint.publicKey,
                     poolVault: pool_vault.address,
                     tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
                     clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
@@ -515,6 +519,7 @@ describe('datafarm', () => {
                     datafarm: dataProgram.programId,
                     pdaAccount: pda,
                     poolVault: pool_vault.address,
+                    tokenMint: mint.publicKey,
                     tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
                     clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
                 },

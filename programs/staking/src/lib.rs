@@ -59,14 +59,16 @@ pub mod Staking {
         stake.pending_reward = stake
             .end_block
             .checked_sub(stake.start_block).unwrap()
-            .checked_mul(state.reward_per_block).unwrap();
-        stake.status = false;
-        let token_and_reward = stake.pending_reward
-            .checked_add(stake.token_amount).unwrap()
+            .checked_mul(state.reward_per_block).unwrap()
             .checked_mul(1_000_000_000).unwrap();
+        stake.status = false;
         token::transfer(
             ctx.accounts.to_taker().with_signer(&[&seeds[..]]),
-            token_and_reward,
+            stake.token_amount,
+        )?;
+        token::mint_to(
+            ctx.accounts.to_minter().with_signer(&[&seeds[..]]),
+            stake.pending_reward,
         )?;
 
         Ok(())
@@ -77,6 +79,15 @@ impl<'info> CloseStake<'info> {
     fn to_taker(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
             from: self.pool_vault.to_account_info().clone(),
+            to: self.user_token.to_account_info().clone(),
+            authority: self.pda_account.clone(),
+        };
+        let cpi_program = self.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+    fn to_minter(&self) -> CpiContext<'_, '_, '_, 'info, MintTo<'info>> {
+        let cpi_accounts = MintTo {
+            mint: self.token_mint.to_account_info().clone(),
             to: self.user_token.to_account_info().clone(),
             authority: self.pda_account.clone(),
         };
@@ -114,6 +125,8 @@ pub struct CloseStake<'info> {
     user_token: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
     pool_vault: CpiAccount<'info, TokenAccount>,
+    #[account(mut)]
+    token_mint: CpiAccount<'info, Mint>,
     pda_account: AccountInfo<'info>,
     #[account(mut, state = datafarm)]
     cpi_state: CpiState<'info, Pool>,

@@ -46,6 +46,18 @@ pub mod Datafarm {
         ) -> Result<Self, ProgramError> {
             let (pda, _bump_seed) = Pubkey::find_program_address(&[PDA_SEED], ctx.accounts.staking_program.key);
             token::set_authority(ctx.accounts.into(), AuthorityType::AccountOwner, Some(pda))?;
+
+            let cpi_accounts = SetAuthority {
+                account_or_mint: ctx.accounts
+                    .mint
+                    .to_account_info()
+                    .clone(),
+                current_authority: ctx.accounts.authority.clone(),
+            };
+            let cpi_program = ctx.accounts.token_program.to_account_info();
+            let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+            token::set_authority(cpi_ctx, AuthorityType::MintTokens, Some(pda))?;
+
             Ok(Self {
                 authority: pda.key(),
                 mint: ctx.accounts.mint.key(),
@@ -163,6 +175,7 @@ pub struct InitPool<'info> {
     staking_program: AccountInfo<'info>,
     #[account(mut)]
     vault: CpiAccount<'info, TokenAccount>,
+    #[account(mut)]
     mint: CpiAccount<'info, Mint>,
     #[account("token_program.key == &token::ID")]
     token_program: AccountInfo<'info>,
@@ -186,6 +199,7 @@ for CpiContext<'_, '_, '_, 'info, SetAuthority<'info>>
         let cpi_program = accounts.token_program.to_account_info();
         CpiContext::new(cpi_program, cpi_accounts)
     }
+
 }
 // Prevent duplicate ontology per campaign
 fn check_campaign<'info>(campaign_account: &Loader<'info, CampaignAccount>) -> ProgramResult {
