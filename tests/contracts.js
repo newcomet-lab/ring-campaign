@@ -306,7 +306,7 @@ describe('datafarm', () => {
         let utterance = "hello utterance";
         let pool = await dataProgram.state.fetch();
         const campaign = await dataProgram.account.campaignAccount.fetch(architect.publicKey);
-        for (i = 0; i < 3; i++) {
+        for (i = 0; i < 6; i++) {
             const transaction = await dataProgram.rpc.utterance(
                 utterance + i,
                 {
@@ -334,7 +334,8 @@ describe('datafarm', () => {
                 "\n\t and validation status :", campaignData.utterances[j].finish
             );
         }
-        assert.ok(campaignData.head.toNumber() === 3);
+        console.log("head is ",campaignData.head.toNumber());
+        assert.ok(campaignData.head.toNumber() === 6);
     }).timeout(90000);
 
     it("validate 2 Utterance of 3 submitted", async () => {
@@ -344,6 +345,9 @@ describe('datafarm', () => {
         let utterance0 = new TextDecoder("utf-8").decode(new Uint8Array(campaignData.utterances[0].data));
         let utterance1 = new TextDecoder("utf-8").decode(new Uint8Array(campaignData.utterances[1].data));
         let utterance2 = new TextDecoder("utf-8").decode(new Uint8Array(campaignData.utterances[2].data));
+        let utterance3 = new TextDecoder("utf-8").decode(new Uint8Array(campaignData.utterances[3].data));
+        let utterance4 = new TextDecoder("utf-8").decode(new Uint8Array(campaignData.utterances[4].data));
+        let utterance5 = new TextDecoder("utf-8").decode(new Uint8Array(campaignData.utterances[5].data));
 
         // validated first submitted utterance
         if (utterance0.startsWith("hello utterance0")) {
@@ -467,7 +471,7 @@ describe('datafarm', () => {
                 }
             );
         }
-        if (utterance1.startsWith("hello utterance2")) {
+        if (utterance2.startsWith("hello utterance2")) {
             await dataProgram.rpc.validate(
                 new anchor.BN(1),
                 true,
@@ -483,6 +487,52 @@ describe('datafarm', () => {
             );
         }
 
+        if (utterance2.startsWith("hello utterance2")) {
+            await dataProgram.rpc.validate(
+                new anchor.BN(2),
+                true,
+                {
+                    accounts: {
+                        validator: validatorC.publicKey,
+                        campaignAccount: architect.publicKey,
+                        pool: dataProgram.state.address(),
+                        datafarm: dataProgram.programId,
+                    },
+                    signers: [validatorC]
+                }
+            );
+        }
+        if (utterance2.startsWith("hello utterance2")) {
+            await dataProgram.rpc.validate(
+                new anchor.BN(2),
+                true,
+                {
+                    accounts: {
+                        validator: validatorD.publicKey,
+                        campaignAccount: architect.publicKey,
+                        pool: dataProgram.state.address(),
+                        datafarm: dataProgram.programId,
+                    },
+                    signers: [validatorD]
+                }
+            );
+        }
+        if (utterance2.startsWith("hello utterance2")) {
+            await dataProgram.rpc.validate(
+                new anchor.BN(2),
+                true,
+                {
+                    accounts: {
+                        validator: validatorE.publicKey,
+                        campaignAccount: architect.publicKey,
+                        pool: dataProgram.state.address(),
+                        datafarm: dataProgram.programId,
+                    },
+                    signers: [validatorE]
+                }
+            );
+        }
+
     }).timeout(90000);
 
 
@@ -490,6 +540,7 @@ describe('datafarm', () => {
         let pool = await dataProgram.state.fetch();
         const campaign = await dataProgram.account.campaignAccount.fetch(architect.publicKey);
         for (j = 0; j < campaign.head; j++) {
+            console.log("Utterance ",j);
             let test = new TextDecoder("utf-8").decode(new Uint8Array(campaign.utterances[j].data));
             console.log("\tutterance : ", test,
                 "\n\tbuilder is ", campaign.utterances[j].builder.toBase58());

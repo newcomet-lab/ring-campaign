@@ -371,13 +371,13 @@ impl CampaignAccount {
             false => {
                 self.utterances[utterance_id as usize].incorrect = self.utterances
                     [utterance_id as usize]
-                    .correct
+                    .incorrect
                     .checked_add(1)
                     .unwrap();
             }
         }
 
-        if self.min_validator > self.utterances[utterance_id as usize].correct {
+        if self.utterances[utterance_id as usize].correct > self.min_validator  {
             self.utterances[utterance_id as usize].finish = true;
             msg!(
             "{{ \"event\" : \"validate_utterance\",\
