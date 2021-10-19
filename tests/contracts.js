@@ -161,6 +161,7 @@ describe('datafarm', () => {
         const topic_subject = "new subject";
         const topic_explain = "here is my explain";
         const seed_phrase = "write sentence about solana";
+        const campaignAccount = anchor.web3.Keypair.generate();
         await dataProgram.state.rpc.createCampaign(
             offChainReference,
             period,
@@ -175,21 +176,20 @@ describe('datafarm', () => {
             seed_phrase,
             {
                 accounts: {
-                    campaignAccount: architect.publicKey,
+                    campaignAccount: campaignAccount.publicKey,
                     architect: architect.publicKey,
                     pool: dataProgram.state.address(),
                     datafarm: dataProgram.programId,
                     tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
                 },
                 instructions: [
-                    await dataProgram.account.campaignAccount.createInstruction(architect),
+                    await dataProgram.account.campaignAccount.createInstruction(campaignAccount),
                 ],
-                signers: [architect],
+                signers: [architect,campaignAccount],
             });
 
-        const campaign = await dataProgram.account.campaignAccount.fetch(architect.publicKey);
-        const campaignAddr = await dataProgram.account.campaignAccount.associatedAddress(architect.publicKey);
-        console.log("\tcampaign address ", campaignAddr.toBase58());
+        const campaign = await dataProgram.account.campaignAccount.fetch(campaignAccount.publicKey);
+        console.log("\tcampaign address ", campaignAccount.publicKey.toBase58());
         assert.ok(campaign.minBuilder.eq(min_builder));
     }).timeout(20000);
     it("Architect stake to campaign", async () => {
@@ -286,31 +286,35 @@ describe('datafarm', () => {
         assert.ok(campaign.minBuilder.eq(min_builder));
     }).timeout(20000);
     it("Get a architect for a campaign", async () => {
-        const campaign = await dataProgram.account.campaignAccount.fetch(architect.publicKey);
-        const campaignAddr = await dataProgram.account.campaignAccount.associatedAddress(architect.publicKey);
-        console.log("\tArchitects for campaign : ", campaignAddr.toBase58());
-        console.log("\t\tis:", campaign.architect.toBase58());
-    });
+        let pool = dataProgram.state.address();
+        for(let i=0;i<pool.head;i++){
+            const campaign = await dataProgram.account.campaignAccount.fetch(pool.campaigns[i]);
+            const campaignAddr = await dataProgram.account.campaignAccount.associatedAddress(pool.campaigns[i]);
+            console.log("\tArchitects for campaign : ", campaignAddr.toBase58());
+            console.log("\t\tis:", campaign.architect.toBase58());
+        }
+
+    }).timeout(20000);
     it("Get All Campaign", async () => {
         let pool = await dataProgram.state.fetch();
         let campaigns = pool.campaigns;
         for (let z = 0; z < pool.head; z++) {
-            const campaignAddr = await dataProgram.account.campaignAccount.associatedAddress(campaigns[z]);
-            console.log("\tarchitect ", campaigns[z].toBase58(), "\tcreated campaign ", campaignAddr.toBase58());
+            const campaign = await dataProgram.account.campaignAccount.fetch(pool.campaigns[z]);
+            console.log("\tarchitect ", campaign.architect.toBase58(), "\tcreated campaign ", pool.campaigns[z].toBase58());
         }
     }).timeout(90000);
 
     it("Submit 3 Utterance to an ontology", async () => {
         let utterance = "hello utterance";
         let pool = await dataProgram.state.fetch();
-        const campaign = await dataProgram.account.campaignAccount.fetch(architect.publicKey);
+        const campaign = await dataProgram.account.campaignAccount.fetch(pool.campaigns[0]);
         for (i = 0; i < 6; i++) {
             const transaction = await dataProgram.rpc.utterance(
                 utterance + i,
                 {
                     accounts: {
                         builder: builder.publicKey,
-                        campaignAccount: architect.publicKey,
+                        campaignAccount: pool.campaigns[0],
                         pool: dataProgram.state.address(),
                         datafarm: dataProgram.programId,
                     },
@@ -319,8 +323,8 @@ describe('datafarm', () => {
             );
         }
 
-        const campaignData = await dataProgram.account.campaignAccount.fetch(architect.publicKey);
-        const campaignAddr = await dataProgram.account.campaignAccount.associatedAddress(architect.publicKey);
+        const campaignData = await dataProgram.account.campaignAccount.fetch(pool.campaigns[0]);
+        const campaignAddr = await dataProgram.account.campaignAccount.associatedAddress(pool.campaigns[0]);
         console.log("\t", campaignData.head.toString(), " utterances submited to campaign : ", campaignAddr.toBase58());
         let utter = new TextDecoder("utf-8").decode(new Uint8Array(campaignData.utterances[0].data));
         for (j = 0; j < campaignData.head; j++) {
@@ -336,10 +340,10 @@ describe('datafarm', () => {
         assert.ok(campaignData.head.toNumber() === 6);
     }).timeout(90000);
 
-    it("validate 2 Utterance of 3 submitted", async () => {
+    it("validate some Utterances", async () => {
         let pool = await dataProgram.state.fetch();
-        const campaignData = await dataProgram.account.campaignAccount.fetch(architect.publicKey);
-        const campaignAddr = await dataProgram.account.campaignAccount.associatedAddress(architect.publicKey);
+        const campaignData = await dataProgram.account.campaignAccount.fetch(pool.campaigns[0]);
+        const campaignAddr = await dataProgram.account.campaignAccount.associatedAddress(pool.campaigns[0]);
         let utterance0 = new TextDecoder("utf-8").decode(new Uint8Array(campaignData.utterances[0].data));
         let utterance1 = new TextDecoder("utf-8").decode(new Uint8Array(campaignData.utterances[1].data));
         let utterance2 = new TextDecoder("utf-8").decode(new Uint8Array(campaignData.utterances[2].data));
@@ -355,7 +359,7 @@ describe('datafarm', () => {
                 {
                     accounts: {
                         validator: validator.publicKey,
-                        campaignAccount: architect.publicKey,
+                        campaignAccount: pool.campaigns[0],
                         pool: dataProgram.state.address(),
                         datafarm: dataProgram.programId,
                     },
@@ -370,7 +374,7 @@ describe('datafarm', () => {
                 {
                     accounts: {
                         validator: validatorB.publicKey,
-                        campaignAccount: architect.publicKey,
+                        campaignAccount: pool.campaigns[0],
                         pool: dataProgram.state.address(),
                         datafarm: dataProgram.programId,
                     },
@@ -385,7 +389,7 @@ describe('datafarm', () => {
                 {
                     accounts: {
                         validator: validatorC.publicKey,
-                        campaignAccount: architect.publicKey,
+                        campaignAccount: pool.campaigns[0],
                         pool: dataProgram.state.address(),
                         datafarm: dataProgram.programId,
                     },
@@ -400,7 +404,7 @@ describe('datafarm', () => {
                 {
                     accounts: {
                         validator: validatorD.publicKey,
-                        campaignAccount: architect.publicKey,
+                        campaignAccount: pool.campaigns[0],
                         pool: dataProgram.state.address(),
                         datafarm: dataProgram.programId,
                     },
@@ -415,7 +419,7 @@ describe('datafarm', () => {
                 {
                     accounts: {
                         validator: validatorE.publicKey,
-                        campaignAccount: architect.publicKey,
+                        campaignAccount: pool.campaigns[0],
                         pool: dataProgram.state.address(),
                         datafarm: dataProgram.programId,
                     },
@@ -430,7 +434,7 @@ describe('datafarm', () => {
                 {
                     accounts: {
                         validator: validatorF.publicKey,
-                        campaignAccount: architect.publicKey,
+                        campaignAccount: pool.campaigns[0],
                         pool: dataProgram.state.address(),
                         datafarm: dataProgram.programId,
                     },
@@ -445,7 +449,7 @@ describe('datafarm', () => {
                 {
                     accounts: {
                         validator: validatorG.publicKey,
-                        campaignAccount: architect.publicKey,
+                        campaignAccount: pool.campaigns[0],
                         pool: dataProgram.state.address(),
                         datafarm: dataProgram.programId,
                     },
@@ -461,7 +465,7 @@ describe('datafarm', () => {
                 {
                     accounts: {
                         validator: validator.publicKey,
-                        campaignAccount: architect.publicKey,
+                        campaignAccount: pool.campaigns[0],
                         pool: dataProgram.state.address(),
                         datafarm: dataProgram.programId,
                     },
@@ -476,7 +480,7 @@ describe('datafarm', () => {
                 {
                     accounts: {
                         validator: validator.publicKey,
-                        campaignAccount: architect.publicKey,
+                        campaignAccount: pool.campaigns[0],
                         pool: dataProgram.state.address(),
                         datafarm: dataProgram.programId,
                     },
@@ -492,7 +496,7 @@ describe('datafarm', () => {
                 {
                     accounts: {
                         validator: validatorC.publicKey,
-                        campaignAccount: architect.publicKey,
+                        campaignAccount: pool.campaigns[0],
                         pool: dataProgram.state.address(),
                         datafarm: dataProgram.programId,
                     },
@@ -507,7 +511,7 @@ describe('datafarm', () => {
                 {
                     accounts: {
                         validator: validatorD.publicKey,
-                        campaignAccount: architect.publicKey,
+                        campaignAccount: pool.campaigns[0],
                         pool: dataProgram.state.address(),
                         datafarm: dataProgram.programId,
                     },
@@ -522,7 +526,7 @@ describe('datafarm', () => {
                 {
                     accounts: {
                         validator: validatorE.publicKey,
-                        campaignAccount: architect.publicKey,
+                        campaignAccount: pool.campaigns[0],
                         pool: dataProgram.state.address(),
                         datafarm: dataProgram.programId,
                     },
@@ -536,7 +540,7 @@ describe('datafarm', () => {
 
     it("Get the current status of Ontology", async () => {
         let pool = await dataProgram.state.fetch();
-        const campaign = await dataProgram.account.campaignAccount.fetch(architect.publicKey);
+        const campaign = await dataProgram.account.campaignAccount.fetch(pool.campaigns[0]);
         for (j = 0; j < campaign.head; j++) {
             console.log("Utterance ",j);
             let test = new TextDecoder("utf-8").decode(new Uint8Array(campaign.utterances[j].data));
