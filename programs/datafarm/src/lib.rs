@@ -112,6 +112,7 @@ pub mod Datafarm {
             Ok(())
         }
         pub fn stake_campaign(&mut self, ctx: Context<StakeCampaign>)-> ProgramResult {
+
             Ok(())
         }
         pub fn update_reward(&mut self, ctx: Context<UpdatePool>, reward: u64) -> ProgramResult {

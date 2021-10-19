@@ -150,19 +150,17 @@ describe('datafarm', () => {
     }).timeout(90000);
 
     it("Create Campaign by architect", async () => {
-        const pool = await dataProgram.state.fetch();
-        const offChainReference = new anchor.BN(1213);
-        const period = new anchor.BN(14);
-        const min_builder = new anchor.BN(5);
-        const min_validator = new anchor.BN(5);
-        const reward_per_builder = new anchor.BN(3);
-        const reward_per_validator = new anchor.BN(2);
-        const validation_quorum = 64;
+        const offChainReference = new anchor.BN(1213);// used by offchain system
+        const period = new anchor.BN(14);// number of day for staking
+        const min_builder = new anchor.BN(5);// minimum builder needed by this campaign
+        const min_validator = new anchor.BN(5);/// minimum validation needed by per utterance
+        const reward_per_builder = new anchor.BN(3); // reward for builder
+        const reward_per_validator = new anchor.BN(2);// reward of validator per utterance
+        const validation_quorum = 64; // later useed to calculate minimum correction
         const topic_domain = "my topic";
         const topic_subject = "new subject";
         const topic_explain = "here is my explain";
         const seed_phrase = "write sentence about solana";
-        const CampaignSeed = 'CampaignCreate';
         await dataProgram.state.rpc.createCampaign(
             offChainReference,
             period,
