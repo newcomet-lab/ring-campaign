@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Deserializer, Serializer};
 use spl_token::instruction::AuthorityType;
 use Datafarm::PoolConfig as PoolState;
+use crate::Datafarm::PoolConfig;
+
 const SMALL: usize = 256;
 const MEDIUM: usize = 512;
 
@@ -111,18 +113,79 @@ pub mod Datafarm {
             campaign.refID,campaign.architect );
             Ok(())
         }
-        pub fn stake_campaign(&mut self, ctx: Context<StakeCampaign>)-> ProgramResult {
 
-            Ok(())
-        }
         pub fn update_reward(&mut self, ctx: Context<UpdatePool>, reward: u64) -> ProgramResult {
             self.reward_per_block = reward;
             Ok(())
         }
     }
 
-    const CONTRACT_PDA_SEED: &[u8] = b"synesis";
 
+    pub fn stake(ctx: Context<InitStake>) -> ProgramResult {
+        let stake = &mut ctx.accounts.stake_account.load_init()?;
+        let state = &mut ctx.accounts.cpi_state;
+        let cpi_accounts = Transfer {
+            from: ctx.accounts.user_token.to_account_info(),
+            to: ctx.accounts.pool_vault.to_account_info(),
+            authority: ctx.accounts.user.clone(),
+        };
+        let cpi_program = ctx.accounts.token_program.clone();
+        let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+        let stake_amount = state.architect_stake.checked_mul(1000_000_000).unwrap();
+        match token::transfer(cpi_ctx, stake_amount) {
+            Ok(res) => {}
+            Err(e) => {
+                msg!("error is {:?}", e);
+            }
+        }
+        stake.token_amount += stake_amount;
+        stake.start_block = ctx.accounts.clock.slot;
+        stake.lock_in_time = ctx.accounts.clock.unix_timestamp;
+        stake.pending_reward = 0;
+        stake.user_address = ctx.accounts.user_token.key();
+        stake.status = true;
+         let mut camp = ctx.accounts.campaign.load_mut()?;
+         camp.stake_status = true ;
+
+        msg!(
+            "{{ \"event\" : \"stake\",\
+            \"amount\" : \"{}\",\
+            \"start_block\" : \"{}\",\
+            \"start_time\" : \"{}\"\
+          }}",
+            stake.token_amount,
+            stake.start_block,
+            stake.lock_in_time
+        );
+        Ok(())
+    }
+
+    pub fn unstake(ctx: Context<CloseStake>) -> ProgramResult {
+        let stake = &mut ctx.accounts.stake_account.load_mut()?;
+        let state = &mut ctx.accounts.cpi_state;
+        let (_pda, bump_seed) = Pubkey::find_program_address(&[PDA_SEED], ctx.program_id);
+        let seeds = &[&PDA_SEED[..], &[bump_seed]];
+        stake.token_amount = stake.token_amount.checked_sub(stake.token_amount).unwrap();
+        stake.end_block = ctx.accounts.clock.slot;
+        stake.lock_out_time = ctx.accounts.clock.unix_timestamp;
+        stake.pending_reward = stake
+            .end_block
+            .checked_sub(stake.start_block).unwrap()
+            .checked_mul(state.reward_per_block).unwrap()
+            .checked_mul(1_000_000_000).unwrap();
+        stake.status = false;
+        token::transfer(
+            ctx.accounts.to_taker().with_signer(&[&seeds[..]]),
+            stake.token_amount,
+        )?;
+        token::mint_to(
+            ctx.accounts.to_minter().with_signer(&[&seeds[..]]),
+            stake.pending_reward,
+        )?;
+        let mut camp = ctx.accounts.campaign.load_mut()?;
+        camp.stake_status = false ;
+        Ok(())
+    }
     //#[access_control(CreateCampaign::accounts(&ctx, nonce))]
     pub fn utterance(ctx: Context<OnBuilder>, msg: String) -> ProgramResult {
         let campaign = &mut ctx.accounts.campaign_account.load_mut()?;
@@ -235,11 +298,11 @@ pub struct CreateCampaign<'info> {
 #[derive(Accounts)]
 pub struct StakeCampaign<'info> {
     #[account(mut)]
-    campaign_account: Loader<'info, CampaignAccount>,
+    pub campaign_account: Loader<'info, CampaignAccount>,
     #[account(signer)]
-    architect: AccountInfo<'info>,
+    pub architect: AccountInfo<'info>,
     #[account("token_program.key == &token::ID")]
-    token_program: AccountInfo<'info>,
+    pub token_program: AccountInfo<'info>,
 }
 
 /// Campaign Structure
@@ -416,10 +479,101 @@ pub struct OnValidator<'info> {
     pub campaign_account: Loader<'info, CampaignAccount>,
 }
 
-#[derive(Accounts)]
-pub struct Python<'info> {
-    pub user: AccountInfo<'info>,
+impl<'info> CloseStake<'info> {
+    fn to_taker(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: self.pool_vault.to_account_info().clone(),
+            to: self.user_token.to_account_info().clone(),
+            authority: self.pda_account.clone(),
+        };
+        let cpi_program = self.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+    fn to_minter(&self) -> CpiContext<'_, '_, '_, 'info, MintTo<'info>> {
+        let cpi_accounts = MintTo {
+            mint: self.token_mint.to_account_info().clone(),
+            to: self.user_token.to_account_info().clone(),
+            authority: self.pda_account.clone(),
+        };
+        let cpi_program = self.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
 }
+
+#[derive(Accounts)]
+pub struct InitStake<'info> {
+    #[account(zero)]
+    stake_account: Loader<'info, stakeAccount>,
+    #[account(signer)]
+    user: AccountInfo<'info>,
+    #[account(mut,
+    constraint = user_token.amount >= cpi_state.architect_stake,
+    constraint = user_token.owner == *user.key
+    )]
+    user_token: CpiAccount<'info, TokenAccount>,
+    #[account(mut, state = datafarm)]
+    pub cpi_state: CpiState<'info, PoolConfig>,
+    #[account(executable)]
+    pub datafarm: AccountInfo<'info>,
+    #[account(mut)]
+    pub campaign: Loader<'info,CampaignAccount>,
+    #[account(mut)]
+    pool_vault: CpiAccount<'info, TokenAccount>,
+    #[account(constraint = token_program.key == & token::ID)]
+    token_program: AccountInfo<'info>,
+    clock: Sysvar<'info, Clock>,
+}
+
+#[derive(Accounts)]
+pub struct CloseStake<'info> {
+    #[account(mut)]
+    stake_account: Loader<'info, stakeAccount>,
+    user: AccountInfo<'info>,
+    #[account(mut,
+    constraint = user_token.amount >= cpi_state.architect_stake)]
+    user_token: CpiAccount<'info, TokenAccount>,
+    #[account(mut)]
+    pool_vault: CpiAccount<'info, TokenAccount>,
+    #[account(mut)]
+    token_mint: CpiAccount<'info, Mint>,
+    pda_account: AccountInfo<'info>,
+    #[account(mut, state = datafarm)]
+    cpi_state: CpiState<'info, PoolConfig>,
+    #[account(mut)]
+    pub campaign: Loader<'info,CampaignAccount>,
+    #[account(executable)]
+    datafarm: AccountInfo<'info>,
+    system_program: AccountInfo<'info>,
+    token_program: AccountInfo<'info>,
+    clock: Sysvar<'info, Clock>,
+}
+
+#[account(zero_copy)]
+pub struct stakeAccount {
+    pub token_amount: u64,
+    pub lock_in_time: i64,
+    pub start_block: u64,
+    pub lock_out_time: i64,
+    pub end_block: u64,
+    pub weight: u64,
+    pub pending_reward: u64,
+    pub status: bool,
+    pub token_address: Pubkey,
+    pub user_address: Pubkey,
+}
+
+impl<'a, 'b, 'c, 'info> From<&InitStake<'info>> for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
+    fn from(accounts: &InitStake<'info>) -> CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: accounts.user_token.to_account_info(),
+            to: accounts.pool_vault.to_account_info(),
+            authority: accounts.user.to_account_info(),
+        };
+        let cpi_program = accounts.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
+
 
 pub fn string_small(input: String) -> [u8; SMALL] {
     let given_input = input.as_bytes();
