@@ -1,5 +1,5 @@
 const anchor = require('@project-serum/anchor');
-
+const os = require("os");
 const assert = require("assert");
 const fs = require("fs");
 const {
@@ -29,7 +29,7 @@ const stakingProgram = new anchor.Program(staking_idl, staking_idl.metadata.addr
 describe('datafarm', () => {
     anchor.setProvider(anchor.Provider.env());
     const provider = anchor.getProvider();
-    //const david = new anchor.web3.PublicKey("7aU7BDLoBQm8gmAiaDENQhbpPStzwfJPuM8a1JRhLPtv");
+
     const tester = new anchor.web3.PublicKey("FGrfSpb4mHxRAsmj8jsPuDibiwkmaL1CcWeHFHyt2cXJ");
     const data_idl = JSON.parse(
         require('fs')
@@ -42,8 +42,9 @@ describe('datafarm', () => {
     const dataProgram = new anchor.Program(data_idl, data_idl.metadata.address, anchor.getProvider());
     const stakingProgram = new anchor.Program(staking_idl, staking_idl.metadata.address, anchor.getProvider());
 
-
-    const ks_hadi = fs.readFileSync("~/.config/solana/id.json", {encoding: 'utf8'});
+    const user = os.userInfo().username;
+    const key_path = "/home/"+user+"/.config/solana/id.json";
+    const ks_hadi = fs.readFileSync(key_path, {encoding: 'utf8'});
     const kb_hadi = Buffer.from(JSON.parse(ks_hadi));
     let hadi = new anchor.web3.Account(kb_hadi);
 
@@ -113,7 +114,7 @@ describe('datafarm', () => {
         architectBToken = await userCharge(mint, architectB, admin);
         builderToken = await userCharge(mint, builder, admin);
         validatorToken = await vaultCharge(mint, validator, admin);
-        await ourCharge(mint, david, admin);
+        //await ourCharge(mint, david, admin);
         await ourCharge(mint, tester, admin);
         const [_pda, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
             [Buffer.from(anchor.utils.bytes.utf8.encode("Staking"))],
