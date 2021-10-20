@@ -30,7 +30,7 @@ describe('datafarm', () => {
     anchor.setProvider(anchor.Provider.env());
     const provider = anchor.getProvider();
     const david = new anchor.web3.PublicKey("7aU7BDLoBQm8gmAiaDENQhbpPStzwfJPuM8a1JRhLPtv");
-    const alex = new anchor.web3.PublicKey("8WQL2yB5yw9myW7Xo34sZ7eUTU2oME83BFi6Xa7Wwm1V");
+    const tester = new anchor.web3.PublicKey("8WQL2yB5yw9myW7Xo34sZ7eUTU2oME83BFi6Xa7Wwm1V");
     const data_idl = JSON.parse(
         require('fs')
             .readFileSync('target/idl/Datafarm.json', 'utf8')
@@ -90,7 +90,7 @@ describe('datafarm', () => {
         builderToken = await userCharge(mint, builder, admin);
         validatorToken = await vaultCharge(mint, validator, admin);
         await ourCharge(mint, david, admin);
-        await ourCharge(mint, alex, admin);
+        await ourCharge(mint, tester, admin);
         const [_pda, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
             [Buffer.from(anchor.utils.bytes.utf8.encode("Staking"))],
             stakingProgram.programId
