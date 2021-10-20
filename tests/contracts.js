@@ -29,8 +29,8 @@ const stakingProgram = new anchor.Program(staking_idl, staking_idl.metadata.addr
 describe('datafarm', () => {
     anchor.setProvider(anchor.Provider.env());
     const provider = anchor.getProvider();
-    const david = new anchor.web3.PublicKey("7aU7BDLoBQm8gmAiaDENQhbpPStzwfJPuM8a1JRhLPtv");
-    const tester = new anchor.web3.PublicKey("8WQL2yB5yw9myW7Xo34sZ7eUTU2oME83BFi6Xa7Wwm1V");
+    //const david = new anchor.web3.PublicKey("7aU7BDLoBQm8gmAiaDENQhbpPStzwfJPuM8a1JRhLPtv");
+    const tester = new anchor.web3.PublicKey("FGrfSpb4mHxRAsmj8jsPuDibiwkmaL1CcWeHFHyt2cXJ");
     const data_idl = JSON.parse(
         require('fs')
             .readFileSync('target/idl/Datafarm.json', 'utf8')
@@ -70,6 +70,34 @@ describe('datafarm', () => {
     let bump = undefined;
     let pool_vault = undefined;
     it("log users", async () => {
+        await provider.connection.confirmTransaction(
+            await provider.connection.requestAirdrop(provider.wallet.publicKey, 10000000000),
+            "confirmed"
+        );
+        await provider.connection.confirmTransaction(
+            await provider.connection.requestAirdrop(admin.publicKey, 10000000000),
+            "confirmed"
+        );
+        await provider.connection.confirmTransaction(
+            await provider.connection.requestAirdrop(hadi.publicKey, 10000000000),
+            "confirmed"
+        );
+        await provider.connection.confirmTransaction(
+            await provider.connection.requestAirdrop(architect.publicKey, 10000000000),
+            "confirmed"
+        );
+        await provider.connection.confirmTransaction(
+            await provider.connection.requestAirdrop(builder.publicKey, 10000000000),
+            "confirmed"
+        );
+        await provider.connection.confirmTransaction(
+            await provider.connection.requestAirdrop(validator.publicKey, 10000000000),
+            "confirmed"
+        );
+        await provider.connection.confirmTransaction(
+            await provider.connection.requestAirdrop(tester, 10000000000),
+            "confirmed"
+        );
         console.log("\thadi: ", hadi.publicKey.toBase58());
         console.log("\tadmin : ", admin.publicKey.toBase58());
         console.log("\tarchitect : ", architect.publicKey.toBase58());
@@ -79,10 +107,6 @@ describe('datafarm', () => {
         assert.ok(true);
     }).timeout(90000);
     it("Airdrop SNS token to users", async () => {
-        await provider.connection.confirmTransaction(
-            await provider.connection.requestAirdrop(admin.publicKey, 100000000000),
-            "confirmed"
-        );
         mint = await splToken.Token.createMint(provider.connection, admin, admin.publicKey, null, 9, splToken.TOKEN_PROGRAM_ID,)
         console.log('\tSNS Token public address: ' + mint.publicKey.toBase58());
         architectToken = await userCharge(mint, architect, admin);
