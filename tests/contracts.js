@@ -43,7 +43,7 @@ describe('datafarm', () => {
     const stakingProgram = new anchor.Program(staking_idl, staking_idl.metadata.address, anchor.getProvider());
 
 
-    const ks_hadi = fs.readFileSync("/home/hadi/.config/solana/id.json", {encoding: 'utf8'});
+    const ks_hadi = fs.readFileSync("~/.config/solana/id.json", {encoding: 'utf8'});
     const kb_hadi = Buffer.from(JSON.parse(ks_hadi));
     let hadi = new anchor.web3.Account(kb_hadi);
 
