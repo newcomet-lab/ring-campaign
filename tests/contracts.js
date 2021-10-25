@@ -54,34 +54,6 @@ describe('datafarm', () => {
     let pool_vault = undefined;
     let campaignAccount = undefined;
     it("log users", async () => {
-        await provider.connection.confirmTransaction(
-            await provider.connection.requestAirdrop(provider.wallet.publicKey, 10000000000),
-            "confirmed"
-        );
-        await provider.connection.confirmTransaction(
-            await provider.connection.requestAirdrop(admin.publicKey, 10000000000),
-            "confirmed"
-        );
-        await provider.connection.confirmTransaction(
-            await provider.connection.requestAirdrop(hadi.publicKey, 10000000000),
-            "confirmed"
-        );
-        await provider.connection.confirmTransaction(
-            await provider.connection.requestAirdrop(architect.publicKey, 10000000000),
-            "confirmed"
-        );
-        await provider.connection.confirmTransaction(
-            await provider.connection.requestAirdrop(builder.publicKey, 10000000000),
-            "confirmed"
-        );
-        await provider.connection.confirmTransaction(
-            await provider.connection.requestAirdrop(validator.publicKey, 10000000000),
-            "confirmed"
-        );
-        await provider.connection.confirmTransaction(
-            await provider.connection.requestAirdrop(tester, 10000000000),
-            "confirmed"
-        );
         console.log("\thadi: ", hadi.publicKey.toBase58());
         console.log("\tadmin : ", admin.publicKey.toBase58());
         console.log("\tarchitect : ", architect.publicKey.toBase58());
@@ -91,21 +63,21 @@ describe('datafarm', () => {
         assert.ok(true);
     }).timeout(90000);
     it("Airdrop SNS token to users", async () => {
-        mint = await splToken.Token.createMint(provider.connection, admin, admin.publicKey, null, 9, splToken.TOKEN_PROGRAM_ID,)
+        mint = await splToken.Token.createMint(provider.connection, hadi, hadi.publicKey, null, 9, splToken.TOKEN_PROGRAM_ID,)
         console.log('\tSNS Token public address: ' + mint.publicKey.toBase58());
-        architectToken = await userCharge(mint, architect, admin);
-        architectBToken = await userCharge(mint, architectB, admin);
-        builderToken = await userCharge(mint, builder, admin);
-        validatorToken = await vaultCharge(mint, validator, admin);
+        architectToken = await userCharge(mint, architect, hadi);
+        architectBToken = await userCharge(mint, architectB, hadi);
+        builderToken = await userCharge(mint, builder, hadi);
+        validatorToken = await vaultCharge(mint, validator, hadi);
         //await ourCharge(mint, david, admin);
-        await ourCharge(mint, tester, admin);
+        await ourCharge(mint, tester, hadi);
         const [_pda, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
             [Buffer.from(anchor.utils.bytes.utf8.encode("Staking"))],
             dataProgram.programId
         );
         pda = _pda;
         // Mint more token to vault because we going to send reward to users
-        pool_vault = await vaultCharge(mint, admin, admin);
+        pool_vault = await vaultCharge(mint, hadi, hadi);
         console.log("\tarchitect have ", architectToken.amount / 1000000000, " SNS");
         console.log("\tbuilder have ", builderToken.amount / 1000000000, " SNS");
         console.log("\tvalidator have ", validatorToken.amount / 1000000000, " SNS");
@@ -130,13 +102,13 @@ describe('datafarm', () => {
             reward_apy, pool_cap, penalty, reward_per_block,
             {
                 accounts: {
-                    authority: admin.publicKey,
+                    authority: hadi.publicKey,
                     mint: mint.publicKey,
                     vault: pool_vault.address,
                     stakingProgram: dataProgram.programId,
                     tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
                 },
-                signers: [admin]
+                signers: [hadi]
             });
         let pool = await dataProgram.state.fetch();
         const change_vault = await mint.getAccountInfo(pool.vault);

@@ -1,3 +1,13 @@
+const anchor = require("@project-serum/anchor");
+const common = require("@project-serum/common");
+const {BN} = anchor;
+const {Keypair, PublicKey, SystemProgram, Transaction} = anchor.web3;
+const splToken = require('@solana/spl-token');
+
+const Token = require("@solana/spl-token").Token;
+const TOKEN_PROGRAM_ID = require("@solana/spl-token").TOKEN_PROGRAM_ID;
+const TokenInstructions = require("@project-serum/serum").TokenInstructions;
+
 const userCharge = async (mint, owner, authority) => {
     const tokenAccount = await mint.getOrCreateAssociatedAccountInfo(owner.publicKey);
     await mint.mintTo(
