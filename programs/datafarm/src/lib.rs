@@ -132,6 +132,10 @@ pub mod Datafarm {
         let cpi_program = ctx.accounts.token_program.clone();
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
         let stake_amount = state.architect_stake.checked_mul(1000_000_000).unwrap();
+        let mut camp = ctx.accounts.campaign.load_mut()?;
+        if camp.architect != ctx.accounts.user.key() {
+            return Err(ProgramError::InvalidAccountData);
+        }
         match token::transfer(cpi_ctx, stake_amount) {
             Ok(res) => {}
             Err(e) => {
@@ -145,7 +149,6 @@ pub mod Datafarm {
         stake.token_address = ctx.accounts.user_token.key();
         stake.user_address = ctx.accounts.user.key();
         stake.status = true;
-         let mut camp = ctx.accounts.campaign.load_mut()?;
          camp.stake_status = true ;
 
         msg!(
