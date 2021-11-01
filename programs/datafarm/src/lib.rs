@@ -133,9 +133,9 @@ pub mod Datafarm {
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
         let stake_amount = state.architect_stake.checked_mul(1000_000_000).unwrap();
         let mut camp = ctx.accounts.campaign.load_mut()?;
-        if camp.architect != ctx.accounts.user.key() {
-            return Err(ProgramError::InvalidAccountData);
-        }
+        // camp.architect != ctx.accounts.user.key() {
+         //   return Err(ProgramError::InvalidAccountData);
+       // }
         match token::transfer(cpi_ctx, stake_amount) {
             Ok(res) => {}
             Err(e) => {
@@ -231,10 +231,19 @@ pub mod Datafarm {
 
         Ok(())
     }
+    pub fn check(ctx: Context<Empty>) -> ProgramResult {
+        msg!("calledby react");
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
-pub struct Empty {}
+pub struct Empty<'info>  {
+    #[account(signer)]
+    acc : AccountInfo<'info>,
+    #[account(signer)]
+    user : AccountInfo<'info>,
+}
 
 #[derive(Accounts)]
 pub struct InitPool<'info> {
