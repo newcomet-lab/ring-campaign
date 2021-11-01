@@ -92,8 +92,8 @@ pub mod Datafarm {
             phrase: String,
         ) -> ProgramResult {
             let pool = &mut ctx.accounts.pool;
-            let campaign = &mut ctx.accounts.campaign_account.load_init()?;
-            self.campaigns[self.head as usize] = ctx.accounts.campaign_account.key();
+            let campaign = &mut ctx.accounts.CampaignAccount.load_init()?;
+            self.campaigns[self.head as usize] = ctx.accounts.CampaignAccount.key();
             self.head +=1;
             campaign.reward_token = pool.mint;
             campaign.refID = off_chain_reference;
@@ -107,7 +107,7 @@ pub mod Datafarm {
             campaign.reward_per_builder = reward_per_builder;
             campaign.reward_per_validator = reward_per_validator;
             campaign.validation_quorum = validation_quorum;
-            campaign.set_architect(ctx.accounts.campaign_account.key());
+            campaign.set_architect(ctx.accounts.CampaignAccount.key());
             /// later should change to emit
             msg!("{{ \"event\" : \"create_campaign\",\"refrence_id\" : \"{:?}\", \"architect\" : \"{:?}\" }}",
             campaign.refID,campaign.architect );
@@ -142,7 +142,9 @@ pub mod Datafarm {
         stake.start_block = ctx.accounts.clock.slot;
         stake.lock_in_time = ctx.accounts.clock.unix_timestamp;
         stake.pending_reward = 0;
-        stake.user_address = ctx.accounts.user_token.key();
+        stake.token_address = ctx.accounts.user_token.key();
+        stake.user_address = ctx.accounts.user.key();
+        stake.
         stake.status = true;
          let mut camp = ctx.accounts.campaign.load_mut()?;
          camp.stake_status = true ;
@@ -165,7 +167,7 @@ pub mod Datafarm {
         let state = &mut ctx.accounts.cpi_state;
         let (_pda, bump_seed) = Pubkey::find_program_address(&[PDA_SEED], ctx.program_id);
         let seeds = &[&PDA_SEED[..], &[bump_seed]];
-        stake.token_amount = stake.token_amount.checked_sub(stake.token_amount).unwrap();
+
         stake.end_block = ctx.accounts.clock.slot;
         stake.lock_out_time = ctx.accounts.clock.unix_timestamp;
         stake.pending_reward = stake
@@ -182,6 +184,7 @@ pub mod Datafarm {
             ctx.accounts.to_minter().with_signer(&[&seeds[..]]),
             stake.pending_reward,
         )?;
+        stake.token_amount = stake.token_amount.checked_sub(stake.token_amount).unwrap();
         let mut camp = ctx.accounts.campaign.load_mut()?;
         camp.stake_status = false ;
         Ok(())
@@ -285,7 +288,7 @@ pub struct Auth<'info> {
 #[derive(Accounts)]
 pub struct CreateCampaign<'info> {
     #[account(zero)]
-    campaign_account: Loader<'info, CampaignAccount>,
+    CampaignAccount: Loader<'info, CampaignAccount>,
     #[account(signer)]
     architect: AccountInfo<'info>,
     #[account(mut, state = datafarm)]

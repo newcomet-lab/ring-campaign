@@ -15,14 +15,17 @@ const TokenInstructions = require("@project-serum/serum").TokenInstructions;
 describe('datafarm', () => {
     anchor.setProvider(anchor.Provider.env());
     const provider = anchor.getProvider();
-
-    const tester = new anchor.web3.PublicKey("FGrfSpb4mHxRAsmj8jsPuDibiwkmaL1CcWeHFHyt2cXJ");
     const data_idl = JSON.parse(
         require('fs')
             .readFileSync('target/idl/Datafarm.json', 'utf8')
             .toString())
 
     const dataProgram = new anchor.Program(data_idl, data_idl.metadata.address, anchor.getProvider());
+
+    const tester = new anchor.web3.PublicKey("FGrfSpb4mHxRAsmj8jsPuDibiwkmaL1CcWeHFHyt2cXJ");
+    const tester2 = new anchor.web3.PublicKey("GEVkD15abk9Yvy4zhJaNs5sFJmgD8oaAFASvj9oz6Scn");
+    const tester3 = new anchor.web3.PublicKey("64BDoRi8Cor1iKmKpPuGR9x4hE5sbsohtbiBsbDnzyqy");
+
 
     const user = os.userInfo().username;
     const key_path = "/home/"+user+"/.config/solana/id.json";
@@ -71,6 +74,8 @@ describe('datafarm', () => {
         validatorToken = await vaultCharge(mint, validator, hadi);
         //await ourCharge(mint, david, admin);
         await ourCharge(mint, tester, hadi);
+        await ourCharge(mint, tester2, hadi);
+        await ourCharge(mint, tester3, hadi);
         const [_pda, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
             [Buffer.from(anchor.utils.bytes.utf8.encode("Staking"))],
             dataProgram.programId
