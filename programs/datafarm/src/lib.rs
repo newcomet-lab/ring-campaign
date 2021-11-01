@@ -144,7 +144,6 @@ pub mod Datafarm {
         stake.pending_reward = 0;
         stake.token_address = ctx.accounts.user_token.key();
         stake.user_address = ctx.accounts.user.key();
-        stake.
         stake.status = true;
          let mut camp = ctx.accounts.campaign.load_mut()?;
          camp.stake_status = true ;
