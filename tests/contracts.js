@@ -26,6 +26,7 @@ describe('datafarm', () => {
     const tester2 = new anchor.web3.PublicKey("GEVkD15abk9Yvy4zhJaNs5sFJmgD8oaAFASvj9oz6Scn");
     const tester3 = new anchor.web3.PublicKey("64BDoRi8Cor1iKmKpPuGR9x4hE5sbsohtbiBsbDnzyqy");
     const tester4 = new anchor.web3.PublicKey("DgBxsrQiXpDT9EYeqUeyWBbrjWEmxwZveygVDziNwxSs");
+    const tester5 = new anchor.web3.PublicKey("8WQL2yB5yw9myW7Xo34sZ7eUTU2oME83BFi6Xa7Wwm1V");
 
 
     const user = os.userInfo().username;
@@ -78,6 +79,7 @@ describe('datafarm', () => {
         await ourCharge(mint, tester2, hadi);
         await ourCharge(mint, tester3, hadi);
         await ourCharge(mint, tester4, hadi);
+        await ourCharge(mint, tester5, hadi);
         const [_pda, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
             [Buffer.from(anchor.utils.bytes.utf8.encode("Staking"))],
             dataProgram.programId
