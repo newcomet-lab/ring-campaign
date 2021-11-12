@@ -8,6 +8,25 @@ const Token = require("@solana/spl-token").Token;
 const TOKEN_PROGRAM_ID = require("@solana/spl-token").TOKEN_PROGRAM_ID;
 const TokenInstructions = require("@project-serum/serum").TokenInstructions;
 
+const SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID = new PublicKey(
+    "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+);
+
+const findAssociatedTokenAddress = async (
+    walletAddress,
+    tokenMintAddress
+) => {
+    return (
+        await PublicKey.findProgramAddress(
+            [
+                walletAddress.toBuffer(),
+                TOKEN_PROGRAM_ID.toBuffer(),
+                tokenMintAddress.toBuffer(),
+            ],
+            SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID
+        )
+    )[0];
+};
 const userCharge = async (mint, owner, authority) => {
     const tokenAccount = await mint.getOrCreateAssociatedAccountInfo(owner.publicKey);
     await mint.mintTo(
@@ -44,5 +63,5 @@ const ourCharge = async (mint, owner, authority) => {
 };
 
 module.exports = {
-    userCharge,ourCharge,vaultCharge
+    userCharge,ourCharge,vaultCharge,findAssociatedTokenAddress
 };

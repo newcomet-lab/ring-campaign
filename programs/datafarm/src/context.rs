@@ -1,8 +1,8 @@
-use anchor_lang::prelude::*;
-use anchor_lang::Accounts;
-use anchor_spl::token::{self, Burn, Mint, MintTo,SetAuthority, TokenAccount, Transfer, ID};
 use crate::account::*;
 use crate::Datafarm::PoolConfig;
+use anchor_lang::prelude::*;
+use anchor_lang::Accounts;
+use anchor_spl::token::{self, Burn, Mint, MintTo, SetAuthority, TokenAccount, Transfer, ID};
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct InitStakeAccount<'info> {
@@ -16,8 +16,8 @@ pub struct InitStakeAccount<'info> {
     bump = bump,
     payer = authority,
     )]
-    pub stake_account : Loader<'info, stakeAccount>,
-    #[account(mut,signer)]
+    pub stake_account: Loader<'info, stakeAccount>,
+    #[account(mut, signer)]
     pub authority: AccountInfo<'info>,
     pub campaign: AccountInfo<'info>,
     pub system_program: AccountInfo<'info>,
@@ -39,14 +39,13 @@ pub struct Stake<'info> {
     #[account(executable)]
     pub datafarm: AccountInfo<'info>,
     #[account(mut)]
-    pub campaign: Loader<'info,CampaignAccount>,
+    pub campaign: Loader<'info, CampaignAccount>,
     #[account(mut)]
     pub(crate) pool_vault: CpiAccount<'info, TokenAccount>,
     #[account(constraint = token_program.key == & token::ID)]
     pub(crate) token_program: AccountInfo<'info>,
     pub(crate) clock: Sysvar<'info, Clock>,
 }
-
 
 #[derive(Accounts)]
 pub struct InitPool<'info> {
@@ -62,29 +61,21 @@ pub struct InitPool<'info> {
     pub token_program: AccountInfo<'info>,
 }
 
-impl<'info> From<&mut InitPool<'info>>
-for CpiContext<'_, '_, '_, 'info, SetAuthority<'info>>
-{
+impl<'info> From<&mut InitPool<'info>> for CpiContext<'_, '_, '_, 'info, SetAuthority<'info>> {
     fn from(accounts: &mut InitPool<'info>) -> Self {
         let cpi_accounts = SetAuthority {
-            account_or_mint: accounts
-                .vault
-                .to_account_info()
-                .clone(),
+            account_or_mint: accounts.vault.to_account_info().clone(),
             current_authority: accounts.authority.clone(),
         };
         let cpi_program = accounts.token_program.to_account_info();
         CpiContext::new(cpi_program, cpi_accounts)
     }
-
 }
 
 #[derive(Accounts)]
 pub struct UpdatePool<'info> {
-    pub authority: AccountInfo<'info>
+    pub authority: AccountInfo<'info>,
 }
-
-
 
 impl CampaignAccount {
     pub(crate) fn set_architect(&mut self, architect: Pubkey) {
@@ -116,10 +107,10 @@ impl CampaignAccount {
             }
         }
 
-        if self.utterances[utterance_id as usize].correct > self.min_validator  {
+        if self.utterances[utterance_id as usize].correct >= self.min_validator {
             self.utterances[utterance_id as usize].finish = true;
             msg!(
-            "{{ \"event\" : \"validate_utterance\",\
+                "{{ \"event\" : \"validate_utterance\",\
             \"utterance_id\" : \"{:?}\",\
             \"data\" : \"{:?}\",\
             \"validator\" : \"{:?}\",\
@@ -128,14 +119,14 @@ impl CampaignAccount {
             \"incorrect\" : \"{:?}\",\
             \"finish\" : \"{:?}\"\
           }}",
-            utterance_id,
-            self.utterances[utterance_id as usize].data,
-            validator,
-            self.utterances[utterance_id as usize].builder,
-            self.utterances[utterance_id as usize].correct,
-            self.utterances[utterance_id as usize].incorrect,
-            self.utterances[utterance_id as usize].finish
-        );
+                utterance_id,
+                self.utterances[utterance_id as usize].data,
+                validator,
+                self.utterances[utterance_id as usize].builder,
+                self.utterances[utterance_id as usize].correct,
+                self.utterances[utterance_id as usize].incorrect,
+                self.utterances[utterance_id as usize].finish
+            );
         }
         self.utterances[utterance_id as usize].validators
             [self.utterances[utterance_id as usize].head as usize] = validator;
@@ -153,13 +144,12 @@ impl CampaignAccount {
     }
 }
 
-
 #[derive(Accounts)]
-pub struct Empty<'info>  {
+pub struct Empty<'info> {
     #[account(signer)]
-    acc : AccountInfo<'info>,
+    acc: AccountInfo<'info>,
     #[account(signer)]
-    user : AccountInfo<'info>,
+    user: AccountInfo<'info>,
 }
 
 /// Structure for access list checking
@@ -168,7 +158,6 @@ pub struct Auth<'info> {
     #[account(signer)]
     authority: AccountInfo<'info>,
 }
-
 
 #[derive(Accounts)]
 pub struct CreateCampaign<'info> {
@@ -193,7 +182,6 @@ pub struct StakeCampaign<'info> {
     pub token_program: AccountInfo<'info>,
 }
 
-
 #[derive(Accounts)]
 pub struct OnBuilder<'info> {
     #[account(signer)]
@@ -204,6 +192,7 @@ pub struct OnBuilder<'info> {
     pub datafarm: AccountInfo<'info>,
     #[account(mut)]
     pub campaign_account: Loader<'info, CampaignAccount>,
+    pub stake_account: Loader<'info, stakeAccount>,
 }
 
 #[derive(Accounts)]
@@ -216,6 +205,7 @@ pub struct OnValidator<'info> {
     pub datafarm: AccountInfo<'info>,
     #[account(mut)]
     pub campaign_account: Loader<'info, CampaignAccount>,
+    pub stake_account: Loader<'info, stakeAccount>,
 }
 
 impl<'info> CloseStake<'info> {
@@ -239,8 +229,6 @@ impl<'info> CloseStake<'info> {
     }
 }
 
-
-
 #[derive(Accounts)]
 pub struct CloseStake<'info> {
     #[account(mut)]
@@ -257,14 +245,13 @@ pub struct CloseStake<'info> {
     #[account(mut, state = datafarm)]
     pub(crate) cpi_state: CpiState<'info, PoolConfig>,
     #[account(mut)]
-    pub campaign: Loader<'info,CampaignAccount>,
+    pub campaign: Loader<'info, CampaignAccount>,
     #[account(executable)]
     datafarm: AccountInfo<'info>,
     system_program: AccountInfo<'info>,
     token_program: AccountInfo<'info>,
     pub(crate) clock: Sysvar<'info, Clock>,
 }
-
 
 impl<'a, 'b, 'c, 'info> From<&Stake<'info>> for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
     fn from(accounts: &Stake<'info>) -> CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {

@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
 
-
 #[account(zero_copy)]
 #[derive(Default)]
 pub struct stakeAccount {
@@ -14,8 +13,9 @@ pub struct stakeAccount {
     pub status: bool,
     pub token_address: Pubkey,
     pub user_address: Pubkey,
-    pub role :u8,
-    pub bump :u8
+    pub campaign_address: Pubkey,
+    pub role: u8,
+    pub bump: u8,
 }
 
 /// Campaign Structure

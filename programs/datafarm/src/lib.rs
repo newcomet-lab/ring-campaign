@@ -159,6 +159,7 @@ pub mod Datafarm {
         stake.status = true;
         camp.stake_status = true;
         camp.stakeAccount = ctx.accounts.stake_account.key();
+        stake.campaign_address = ctx.accounts.campaign.key();
         msg!(
             "{{ \"event\" : \"stake\",\
             \"amount\" : \"{}\",\
@@ -205,6 +206,16 @@ pub mod Datafarm {
     //#[access_control(CreateCampaign::accounts(&ctx, nonce))]
     pub fn utterance(ctx: Context<OnBuilder>, msg: String) -> ProgramResult {
         let campaign = &mut ctx.accounts.campaign_account.load_mut()?;
+        let stake = &mut ctx.accounts.stake_account.load()?;
+        if stake.user_address != ctx.accounts.builder.key() {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        if stake.campaign_address != ctx.accounts.campaign_account.key() {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        if !stake.status {
+            return Err(ProgramError::InvalidAccountData);
+        }
         let pool = &mut ctx.accounts.pool;
         let given_msg = msg.as_bytes();
         let mut data = [0u8; 256];
@@ -234,6 +245,16 @@ pub mod Datafarm {
 
     pub fn validate(ctx: Context<OnValidator>, utterance_id: u64, status: bool) -> ProgramResult {
         let campaign = &mut ctx.accounts.campaign_account.load_mut()?;
+        let stake = &mut ctx.accounts.stake_account.load()?;
+        if stake.user_address != ctx.accounts.validator.key() {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        if stake.campaign_address != ctx.accounts.campaign_account.key() {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        if !stake.status {
+            return Err(ProgramError::InvalidAccountData);
+        }
         let pool = &mut ctx.accounts.pool;
         let validator = *ctx.accounts.validator.key;
         campaign.update_utterance(utterance_id, status, validator);
