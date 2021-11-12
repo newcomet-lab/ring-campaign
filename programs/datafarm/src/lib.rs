@@ -216,6 +216,9 @@ pub mod Datafarm {
         if !stake.status {
             return Err(ProgramError::InvalidAccountData);
         }
+        if stake.role != 2  {
+            return Err(ProgramError::InvalidAccountData);
+        }
         let pool = &mut ctx.accounts.pool;
         let given_msg = msg.as_bytes();
         let mut data = [0u8; 256];
@@ -253,6 +256,9 @@ pub mod Datafarm {
             return Err(ProgramError::InvalidAccountData);
         }
         if !stake.status {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        if stake.role != 3  {
             return Err(ProgramError::InvalidAccountData);
         }
         let pool = &mut ctx.accounts.pool;
