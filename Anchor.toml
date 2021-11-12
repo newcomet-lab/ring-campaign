@@ -1,5 +1,5 @@
 [provider]
-cluster = "devnet"
+cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 [scripts]
 test = "mocha -t 1000000 tests/"
