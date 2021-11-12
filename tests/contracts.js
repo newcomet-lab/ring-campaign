@@ -409,9 +409,9 @@ describe('datafarm', () => {
         assert.ok(campaignData.head.toNumber() === 6);
     }).timeout(90000);
 
-    it("Init Stake Account for Builder", async () => {
+    it("Init Stake Account for validator", async () => {
         let pool = await dataProgram.state.fetch();
-        const role = 2 ;// Builder role
+        const role = 3 ;// Builder role
         const [stakeAccount, nonce] = await PublicKey.findProgramAddress(
             [
                 validator.publicKey.toBuffer(),
