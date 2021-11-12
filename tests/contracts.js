@@ -411,7 +411,7 @@ describe('datafarm', () => {
 
     it("Init Stake Account for validator", async () => {
         let pool = await dataProgram.state.fetch();
-        const role = 3 ;// Builder role
+        const role = 3 ;// validator role
         const [stakeAccount, nonce] = await PublicKey.findProgramAddress(
             [
                 validator.publicKey.toBuffer(),
