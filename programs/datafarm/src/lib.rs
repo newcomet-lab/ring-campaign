@@ -201,9 +201,8 @@ pub mod Datafarm {
         camp.stake_status = false;
         Ok(())
     }
-    pub fn submit_utterance(ctx: Context<InitUtteranceAccount>,  msg: String,bump: u8) -> ProgramResult {
+    pub fn submit_utterance(ctx: Context<InitUtteranceAccount>, msg: String) -> ProgramResult {
         let mut utterance = ctx.accounts.utterance_account.load_init()?;
-        utterance.bump = bump;
         let campaign = &mut ctx.accounts.campaign_account.load_mut()?;
         let stake = &mut ctx.accounts.stake_account.load()?;
         if stake.user_address != ctx.accounts.builder.key() {

@@ -81,7 +81,7 @@ fn check_campaign(campaign_account: &Loader<CampaignAccount>) -> ProgramResult {
 
 #[account(zero_copy)]
 #[derive(Debug)]
-pub struct Utterance {
+pub struct UtteranceAccount {
     pub campaign: Pubkey,
     pub builder: Pubkey,
     pub head: u64,
@@ -93,9 +93,9 @@ pub struct Utterance {
     pub bump: u8,
 }
 
-impl Default for Utterance {
+impl Default for UtteranceAccount {
     fn default() -> Self {
-        Utterance {
+        UtteranceAccount {
             campaign: Pubkey::default(),
             builder: Pubkey::default(),
             head: 0,

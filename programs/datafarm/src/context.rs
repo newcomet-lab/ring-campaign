@@ -24,19 +24,9 @@ pub struct InitStakeAccount<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(bump: u8)]
 pub struct InitUtteranceAccount<'info> {
-    #[account(
-    init,
-    seeds = [
-            campaign_account.key().as_ref(),
-            builder.key().as_ref(),
-            b"utterance".as_ref(),
-            ],
-    bump = bump,
-    payer = builder,
-    )]
-    pub utterance_account: Loader<'info, Utterance>,
+    #[account(zero)]
+    pub(crate) utterance_account: Loader<'info, UtteranceAccount>,
     #[account(mut, signer)]
     pub builder: AccountInfo<'info>,
     #[account(mut)]
