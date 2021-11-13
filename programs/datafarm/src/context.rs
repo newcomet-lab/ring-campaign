@@ -211,10 +211,8 @@ pub struct OnBuilder<'info> {
 pub struct OnValidator<'info> {
     #[account(signer)]
     pub validator: AccountInfo<'info>,
-    #[account(mut, state = datafarm)]
-    pub pool: CpiState<'info, PoolConfig>,
-    #[account(executable)]
-    pub datafarm: AccountInfo<'info>,
+    #[account(mut)]
+    pub utterance_account: Loader<'info, UtteranceAccount>,
     #[account(mut)]
     pub campaign_account: Loader<'info, CampaignAccount>,
     pub stake_account: Loader<'info, stakeAccount>,

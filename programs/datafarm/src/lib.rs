@@ -240,50 +240,9 @@ pub mod Datafarm {
         Ok(())
     }
 
- /*   //#[access_control(CreateCampaign::accounts(&ctx, nonce))]
-    pub fn utterance(ctx: Context<OnBuilder>, msg: String) -> ProgramResult {
-        let campaign = &mut ctx.accounts.campaign_account.load_mut()?;
-        let stake = &mut ctx.accounts.stake_account.load()?;
-        if stake.user_address != ctx.accounts.builder.key() {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        if stake.campaign_address != ctx.accounts.campaign_account.key() {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        if !stake.status {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        if stake.role != 2  {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        let pool = &mut ctx.accounts.pool;
-        let given_msg = msg.as_bytes();
-        let mut data = [0u8; 256];
-        data[..given_msg.len()].copy_from_slice(given_msg);
-        let last_id = campaign.add_utterance(Utterance {
-            builder: ctx.accounts.builder.key(),
-            head: 0,
-            validators: [Pubkey::default(); 32],
-            data,
-            correct: 0,
-            incorrect: 0,
-            finish: false,
-        });
-        /// later should change to emit
-        msg!(
-            "{{ \"event\" : \"submit_utterance\",\
-            \"utterance_id\" : \"{}\",\
-            \"builder\" : \"{}\",\
-            \"architect\" : \"{}\"\
-            }}",
-            last_id,
-            ctx.accounts.builder.key(),
-            campaign.architect
-        );
-        Ok(())
-    }
 
-    pub fn validate(ctx: Context<OnValidator>, utterance_id: u64, status: bool) -> ProgramResult {
+    pub fn validate(ctx: Context<OnValidator>, status: bool) -> ProgramResult {
+        let utterance = &mut ctx.accounts.utterance_account.load_mut()?;
         let campaign = &mut ctx.accounts.campaign_account.load_mut()?;
         let stake = &mut ctx.accounts.stake_account.load()?;
         if stake.user_address != ctx.accounts.validator.key() {
@@ -298,13 +257,53 @@ pub mod Datafarm {
         if stake.role != 3  {
             return Err(ProgramError::InvalidAccountData);
         }
-        let pool = &mut ctx.accounts.pool;
         let validator = *ctx.accounts.validator.key;
-        campaign.update_utterance(utterance_id, status, validator);
-        let utter = campaign.get_utterance(utterance_id);
+        match status {
+            true => {
+                utterance.correct = utterance
+                    .correct
+                    .checked_add(1)
+                    .unwrap();
+            }
+            false => {
+                utterance.incorrect = utterance
+                    .incorrect
+                    .checked_add(1)
+                    .unwrap();
+            }
+        }
+
+        if utterance.correct >= campaign.min_validator {
+            utterance.finish = true;
+            msg!(
+                "{{ \"event\" : \"validate_utterance\",\
+            \"utterance_address\" : \"{:?}\",\
+            \"data\" : \"{:?}\",\
+            \"validator\" : \"{:?}\",\
+            \"builder\" : \"{:?}\",\
+            \"correct\" : \"{:?}\",\
+            \"incorrect\" : \"{:?}\",\
+            \"finish\" : \"{:?}\"\
+          }}",
+                ctx.accounts.utterance_account.key(),
+                utterance.data,
+                ctx.accounts.validator.key(),
+                utterance.builder,
+                utterance.correct,
+                utterance.incorrect,
+                utterance.finish
+            );
+        }
+        let uhead = utterance.head as usize;
+        utterance.validators
+            [uhead] = validator;
+        utterance.head = utterance
+            .head
+            .checked_add(1)
+            .unwrap();
         /// later should change to emit
         Ok(())
-    }*/
+    }
 }
 
 

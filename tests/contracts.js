@@ -376,8 +376,8 @@ describe('datafarm', () => {
             ],
             dataProgram.programId
         );
-        //for (i = 0; i < 6; i++) {
-            let msg = utterance ;//+ i
+        for (i = 0; i < 6; i++) {
+            let msg = utterance+ i ;//
             const selectCampaign = pool.campaigns[0];
             const utteranceAccount= anchor.web3.Keypair.generate();
             const transaction = await dataProgram.rpc.submitUtterance(
@@ -396,7 +396,7 @@ describe('datafarm', () => {
                     signers: [builder,utteranceAccount]
                 }
             );
-        //}
+        }
 
         const campaignData = await dataProgram.account.campaignAccount.fetch(pool.campaigns[0]);
 /*        const campaignAddr = await dataProgram.account.campaignAccount.associatedAddress(pool.campaigns[0]);
@@ -475,7 +475,7 @@ describe('datafarm', () => {
     }).timeout(20000);
 
 
-  /*  it("validate one Utterances", async () => {
+    it("validate one Utterances", async () => {
         let pool = await dataProgram.state.fetch();
         const [stakeAccount, nonce] = await PublicKey.findProgramAddress(
             [
@@ -485,46 +485,50 @@ describe('datafarm', () => {
             ],
             dataProgram.programId
         );
-        const campaignData = await dataProgram.account.campaignAccount.fetch(pool.campaigns[0]);
-        let utterance0 = new TextDecoder("utf-8").decode(new Uint8Array(campaignData.utterances[0].data));
+        const selectCampaign = pool.campaigns[0];
+        const campaignData = await dataProgram.account.campaignAccount.fetch(selectCampaign);
+        const utteranceAccount = campaignData.utterances[0];
+        const utterance = await dataProgram.account.utteranceAccount.fetch(utteranceAccount);;
+        let textData = new TextDecoder("utf-8").decode(new Uint8Array(utterance.data));
         // validated first submitted utterance
-        if (utterance0.startsWith("hello utterance0")) {
+        if (textData.startsWith("test utterance number 0")) {
             await dataProgram.rpc.validate(
-                new anchor.BN(0),
                 true,
                 {
                     accounts: {
+                        utteranceAccount,
                         stakeAccount,
                         validator: validator.publicKey,
-                        campaignAccount: pool.campaigns[0],
-                        pool: dataProgram.state.address(),
-                        datafarm: dataProgram.programId,
+                        campaignAccount: selectCampaign,
                     },
                     signers: [validator]
                 }
             );
         }
-
     }).timeout(90000);
     it("Get the current status of Ontology", async () => {
         let pool = await dataProgram.state.fetch();
-        const campaign = await dataProgram.account.campaignAccount.fetch(pool.campaigns[0]);
+        let selectCampaign = pool.campaigns[0];
+        const campaign = await dataProgram.account.campaignAccount.fetch(selectCampaign);
         for (j = 0; j < campaign.head; j++) {
             console.log("\tUtterance ", j);
-            let test = new TextDecoder("utf-8").decode(new Uint8Array(campaign.utterances[j].data));
+            const utterance = await dataProgram.account.utteranceAccount.fetch(campaign.utterances[j]);
+            let test = new TextDecoder("utf-8").decode(new Uint8Array(utterance.data));
             console.log("\tutterance : ", test,
-                "\n\tbuilder is ", campaign.utterances[j].builder.toBase58());
+                "\n\tbuilder is ", utterance.builder.toBase58(),
+                "\n\tcampaign is ", utterance.campaign.toBase58()
+            );
             console.log("\n\tvalidators are ");
-            let num_validator = (campaign.utterances[j].correct.toNumber() + campaign.utterances[j].incorrect.toNumber());
+            let num_validator = (utterance.correct.toNumber() + utterance.incorrect.toNumber());
             for (k = 0; k < num_validator; k++) {
-                console.log("\t\t", campaign.utterances[j].validators[k].toBase58());
+                console.log("\t\t", utterance.validators[k].toBase58());
             }
-            console.log("\n\tvalidation correct :", campaign.utterances[j].correct.toNumber(),
-                "\n\tvalidation incorrect :", campaign.utterances[j].incorrect.toNumber(),
-                "\n\tvalidation status :", campaign.utterances[j].finish
+            console.log("\n\tvalidation correct :", utterance.correct.toNumber(),
+                "\n\tvalidation incorrect :", utterance.incorrect.toNumber(),
+                "\n\tvalidation status :", utterance.finish
             );
         }
-    }).timeout(90000);*/
+    }).timeout(90000);
     it("Architect unstake", async () => {
         let pool = await dataProgram.state.fetch();
         const [stakeAccount, nonce] = await PublicKey.findProgramAddress(
