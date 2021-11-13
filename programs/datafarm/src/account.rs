@@ -31,9 +31,11 @@ pub struct CampaignAccount {
     pub min_validator: u64,
     pub reward_per_builder: u64,
     pub reward_per_validator: u64,
-    pub validation_quorum: u8,
+    pub validation_quorum: u64,
     pub reward_token: Pubkey,
     pub utterances: [Pubkey; 32],
+    pub approved: u64,
+    pub finish: bool,
     pub time_limit: u64,
     pub init_limit: u64,
     pub domain: [u8; 128],
@@ -59,6 +61,7 @@ impl Default for CampaignAccount {
             validation_quorum: 0,
             reward_token: Pubkey::default(),
             utterances: [Pubkey::default(); 32],
+            approved :0,
             time_limit: 0,
             init_limit: 0,
             domain: [0; 128],
@@ -66,6 +69,7 @@ impl Default for CampaignAccount {
             explain: [0; 256],
             phrase: [0; 256],
             nonce: 0,
+            finish:false
         }
     }
 }

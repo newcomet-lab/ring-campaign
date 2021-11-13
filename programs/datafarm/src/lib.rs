@@ -82,7 +82,7 @@ pub mod Datafarm {
             min_validator: u64,
             reward_per_builder: u64,
             reward_per_validator: u64,
-            validation_quorum: u8,
+            validation_quorum: u64,
             domain: String,
             subject: String,
             explain: String,
@@ -275,6 +275,10 @@ pub mod Datafarm {
 
         if utterance.correct >= campaign.min_validator {
             utterance.finish = true;
+            campaign.approved += 1;
+            if campaign.approved >= campaign.validation_quorum  {
+                campaign.finish = true;
+            }
             msg!(
                 "{{ \"event\" : \"validate_utterance\",\
             \"utterance_address\" : \"{:?}\",\

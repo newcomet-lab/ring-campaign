@@ -150,7 +150,7 @@ describe('datafarm', () => {
         const min_validator = new anchor.BN(5);/// minimum validation needed by per utterance
         const reward_per_builder = new anchor.BN(3); // reward for builder
         const reward_per_validator = new anchor.BN(2);// reward of validator per utterance
-        const validation_quorum = 64; // later useed to calculate minimum correction
+        const validation_quorum = new anchor.BN(64); // later used to calculate minimum corection
         const topic_domain = "my topic";
         const topic_subject = "new subject";
         const topic_explain = "here is my explain";
@@ -253,7 +253,7 @@ describe('datafarm', () => {
         const min_validator = new anchor.BN(5);
         const reward_per_builder = new anchor.BN(3);
         const reward_per_validator = new anchor.BN(2);
-        const validation_quorum = 64;
+        const validation_quorum = new anchor.BN(64);
         const topic_domain = "my topic B";
         const topic_subject = "new subject B";
         const topic_explain = "here is my explain B";
@@ -487,10 +487,11 @@ describe('datafarm', () => {
         );
         const selectCampaign = pool.campaigns[0];
         const campaignData = await dataProgram.account.campaignAccount.fetch(selectCampaign);
+        // validate first utterance in first campaign
         const utteranceAccount = campaignData.utterances[0];
         const utterance = await dataProgram.account.utteranceAccount.fetch(utteranceAccount);;
         let textData = new TextDecoder("utf-8").decode(new Uint8Array(utterance.data));
-        // validated first submitted utterance
+        // check utterance data
         if (textData.startsWith("test utterance number 0")) {
             await dataProgram.rpc.validate(
                 true,
@@ -505,6 +506,37 @@ describe('datafarm', () => {
                 }
             );
         }
+
+        // validate second utterance
+        const utteranceAccount1 = campaignData.utterances[1];
+        await dataProgram.rpc.validate(
+            true,
+            {
+                accounts: {
+                    utteranceAccount: utteranceAccount1,
+                    stakeAccount,
+                    validator: validator.publicKey,
+                    campaignAccount: selectCampaign,
+                },
+                signers: [validator]
+            }
+        );
+
+        // validate forth utterance
+        const utteranceAccount3 = campaignData.utterances[3];
+        await dataProgram.rpc.validate(
+            true,
+            {
+                accounts: {
+                    utteranceAccount: utteranceAccount3,
+                    stakeAccount,
+                    validator: validator.publicKey,
+                    campaignAccount: selectCampaign,
+                },
+                signers: [validator]
+            }
+        );
+
     }).timeout(90000);
     it("Get the current status of Ontology", async () => {
         let pool = await dataProgram.state.fetch();
