@@ -223,9 +223,11 @@ pub mod Datafarm {
         utterance.data = data ;
         utterance.finish =false ;
         utterance.builder = ctx.accounts.builder.key();
+        utterance.campaign = ctx.accounts.campaign_account.key();
         let head = campaign.head.clone() as usize;
         campaign.utterances[head] = ctx.accounts.utterance_account.key();
         campaign.head +=1;
+
         /// later should change to emit
         msg!(
             "{{ \"event\" : \"submit_utterance\",\
