@@ -11,8 +11,8 @@ use std::io::Write;
 mod account;
 mod context;
 
-const SMALL: usize = 256;
-const MEDIUM: usize = 512;
+const SMALL: usize = 128;
+const MEDIUM: usize = 256;
 
 #[program]
 pub mod Datafarm {
@@ -26,8 +26,7 @@ pub mod Datafarm {
         pub vault: Pubkey,
         pub authority: Pubkey,
         pub head: u64,
-        pub tail: u64,
-        pub campaigns: [Pubkey; 16],
+        pub campaigns: [Pubkey; 20],
         pub architect_stake: u64,
         pub builder_stake: u64,
         pub validator_stake: u64,
@@ -64,8 +63,7 @@ pub mod Datafarm {
                 mint: ctx.accounts.mint.key(),
                 vault: ctx.accounts.vault.key(),
                 head: 0,
-                tail: 0,
-                campaigns: [Pubkey::default(); 16],
+                campaigns: [Pubkey::default(); 20],
                 reward_per_block,
                 architect_stake,
                 builder_stake,
@@ -203,7 +201,47 @@ pub mod Datafarm {
         camp.stake_status = false;
         Ok(())
     }
-    //#[access_control(CreateCampaign::accounts(&ctx, nonce))]
+    pub fn submit_utterance(ctx: Context<InitUtteranceAccount>,  msg: String,bump: u8) -> ProgramResult {
+        let mut utterance = ctx.accounts.utterance_account.load_init()?;
+        utterance.bump = bump;
+        let campaign = &mut ctx.accounts.campaign_account.load_mut()?;
+        let stake = &mut ctx.accounts.stake_account.load()?;
+        if stake.user_address != ctx.accounts.builder.key() {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        if stake.campaign_address != ctx.accounts.campaign_account.key() {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        if !stake.status {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        if stake.role != 2  {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        let given_msg = msg.as_bytes();
+        let mut data = [0u8; 256];
+        data[..given_msg.len()].copy_from_slice(given_msg);
+        utterance.data = data ;
+        utterance.finish =false ;
+        utterance.builder = ctx.accounts.builder.key();
+        let head = campaign.head.clone() as usize;
+        campaign.utterances[head] = ctx.accounts.utterance_account.key();
+        campaign.head +=1;
+        /// later should change to emit
+        msg!(
+            "{{ \"event\" : \"submit_utterance\",\
+            \"utterance_id\" : \"{}\",\
+            \"builder\" : \"{}\",\
+            \"architect\" : \"{}\"\
+            }}",
+            campaign.head-1,
+            ctx.accounts.builder.key(),
+            campaign.architect
+        );
+        Ok(())
+    }
+
+ /*   //#[access_control(CreateCampaign::accounts(&ctx, nonce))]
     pub fn utterance(ctx: Context<OnBuilder>, msg: String) -> ProgramResult {
         let campaign = &mut ctx.accounts.campaign_account.load_mut()?;
         let stake = &mut ctx.accounts.stake_account.load()?;
@@ -267,18 +305,11 @@ pub mod Datafarm {
         let utter = campaign.get_utterance(utterance_id);
         /// later should change to emit
         Ok(())
-    }
+    }*/
 }
 
-// Prevent duplicate ontology per campaign
-fn check_campaign<'info>(campaign_account: &Loader<'info, CampaignAccount>) -> ProgramResult {
-    let campaign = campaign_account.load()?;
-    if campaign.architect == Pubkey::default() {
-        Ok(())
-    } else {
-        Err(ProgramError::AccountAlreadyInitialized)
-    }
-}
+
+
 
 pub fn string_small(input: String) -> [u8; SMALL] {
     let given_input = input.as_bytes();

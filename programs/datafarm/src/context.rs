@@ -24,6 +24,28 @@ pub struct InitStakeAccount<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(bump: u8)]
+pub struct InitUtteranceAccount<'info> {
+    #[account(
+    init,
+    seeds = [
+            campaign_account.key().as_ref(),
+            builder.key().as_ref(),
+            b"utterance".as_ref(),
+            ],
+    bump = bump,
+    payer = builder,
+    )]
+    pub utterance_account: Loader<'info, Utterance>,
+    #[account(mut, signer)]
+    pub builder: AccountInfo<'info>,
+    #[account(mut)]
+    pub campaign_account: Loader<'info,CampaignAccount>,
+    pub stake_account: Loader<'info,stakeAccount>,
+    pub system_program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
 pub struct Stake<'info> {
     #[account(mut)]
     pub(crate) stake_account: Loader<'info, stakeAccount>,
@@ -77,7 +99,7 @@ pub struct UpdatePool<'info> {
     pub authority: AccountInfo<'info>,
 }
 
-impl CampaignAccount {
+/*impl CampaignAccount {
     pub(crate) fn set_architect(&mut self, architect: Pubkey) {
         self.architect = architect;
     }
@@ -142,7 +164,7 @@ impl CampaignAccount {
     fn index_of(counter: u64) -> usize {
         std::convert::TryInto::try_into(counter % 512).unwrap()
     }
-}
+}*/
 
 #[derive(Accounts)]
 pub struct Empty<'info> {

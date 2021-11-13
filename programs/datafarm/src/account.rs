@@ -33,13 +33,13 @@ pub struct CampaignAccount {
     pub reward_per_validator: u64,
     pub validation_quorum: u8,
     pub reward_token: Pubkey,
-    pub utterances: [Utterance; 256],
+    pub utterances: [Pubkey; 32],
     pub time_limit: u64,
     pub init_limit: u64,
-    pub domain: [u8; 256],
-    pub subject: [u8; 256],
-    pub explain: [u8; 512],
-    pub phrase: [u8; 512],
+    pub domain: [u8; 128],
+    pub subject: [u8; 128],
+    pub explain: [u8; 256],
+    pub phrase: [u8; 256],
     pub nonce: u8,
 }
 
@@ -58,21 +58,31 @@ impl Default for CampaignAccount {
             reward_per_validator: 0,
             validation_quorum: 0,
             reward_token: Pubkey::default(),
-            utterances: [Utterance::default(); 256],
+            utterances: [Pubkey::default(); 32],
             time_limit: 0,
             init_limit: 0,
-            domain: [0; 256],
-            subject: [0; 256],
-            explain: [0; 512],
-            phrase: [0; 512],
+            domain: [0; 128],
+            subject: [0; 128],
+            explain: [0; 256],
+            phrase: [0; 256],
             nonce: 0,
         }
     }
 }
 
-#[zero_copy]
+fn check_campaign(campaign_account: &Loader<CampaignAccount>) -> ProgramResult {
+    let campaign = campaign_account.load()?;
+    if campaign.architect == Pubkey::default() {
+        Ok(())
+    } else {
+        Err(ProgramError::AccountAlreadyInitialized)
+    }
+}
+
+#[account(zero_copy)]
 #[derive(Debug)]
 pub struct Utterance {
+    pub campaign: Pubkey,
     pub builder: Pubkey,
     pub head: u64,
     pub validators: [Pubkey; 32],
@@ -80,11 +90,13 @@ pub struct Utterance {
     pub correct: u64,
     pub incorrect: u64,
     pub finish: bool,
+    pub bump: u8,
 }
 
 impl Default for Utterance {
     fn default() -> Self {
         Utterance {
+            campaign: Pubkey::default(),
             builder: Pubkey::default(),
             head: 0,
             validators: [Pubkey::default(); 32],
@@ -92,6 +104,7 @@ impl Default for Utterance {
             correct: 0,
             incorrect: 0,
             finish: false,
+            bump: 0
         }
     }
 }

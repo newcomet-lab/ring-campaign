@@ -2,13 +2,15 @@ const anchor = require('@project-serum/anchor');
 const os = require("os");
 const assert = require("assert");
 const fs = require("fs");
+
+
 const {
     SYSVAR_RENT_PUBKEY,
     PublicKey,
     Keypair,
     SystemProgram,
 } = require("@solana/web3.js");
-const {userCharge, ourCharge, vaultCharge,findAssociatedTokenAddress} = require("./helper");
+const {userCharge, ourCharge, vaultCharge,findAssociatedTokenAddress, hash} = require("./helper");
 const splToken = require('@solana/spl-token');
 const TokenInstructions = require("@project-serum/serum").TokenInstructions;
 
@@ -364,10 +366,8 @@ describe('datafarm', () => {
     }).timeout(20000);
 
     it("Submit 3 Utterance to an ontology", async () => {
-        let utterance = "hello utterance";
+        let utterance = "test utterance number ";
         let pool = await dataProgram.state.fetch();
-        const campaign = await dataProgram.account.campaignAccount.fetch(pool.campaigns[0]);
-
         const [stakeAccount, nonce] = await PublicKey.findProgramAddress(
             [
                 builder.publicKey.toBuffer(),
@@ -377,15 +377,26 @@ describe('datafarm', () => {
             dataProgram.programId
         );
         for (i = 0; i < 6; i++) {
-            const transaction = await dataProgram.rpc.utterance(
-                utterance + i,
+            let msg = utterance + i;
+            let msgHash = hash(msg);
+            const selectCampaign = pool.campaigns[0];
+            const [utteranceAccount, nonce] = await PublicKey.findProgramAddress(
+                [
+                    selectCampaign.toBuffer(),
+                    builder.publicKey.toBuffer(),
+                    Buffer.from(anchor.utils.bytes.utf8.encode("utterance"))],
+                dataProgram.programId
+            );
+            const transaction = await dataProgram.rpc.submitUtterance(
+                msg,
+                nonce,
                 {
                     accounts: {
-                        stakeAccount,
+                        utteranceAccount,
                         builder: builder.publicKey,
-                        campaignAccount: pool.campaigns[0],
-                        pool: dataProgram.state.address(),
-                        datafarm: dataProgram.programId,
+                        campaignAccount: selectCampaign,
+                        stakeAccount:stakeAccount,
+                        systemProgram: anchor.web3.SystemProgram.programId,
                     },
                     signers: [builder]
                 }
@@ -469,7 +480,7 @@ describe('datafarm', () => {
     }).timeout(20000);
 
 
-    it("validate one Utterances", async () => {
+  /*  it("validate one Utterances", async () => {
         let pool = await dataProgram.state.fetch();
         const [stakeAccount, nonce] = await PublicKey.findProgramAddress(
             [
@@ -499,7 +510,7 @@ describe('datafarm', () => {
             );
         }
 
-    }).timeout(90000);
+    }).timeout(90000);*/
     it("Get the current status of Ontology", async () => {
         let pool = await dataProgram.state.fetch();
         const campaign = await dataProgram.account.campaignAccount.fetch(pool.campaigns[0]);
