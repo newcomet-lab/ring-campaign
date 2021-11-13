@@ -275,10 +275,11 @@ pub mod Datafarm {
 
         if utterance.correct >= campaign.min_validator {
             utterance.finish = true;
-            campaign.approved += 1;
-            if campaign.approved >= campaign.validation_quorum  {
+            campaign.utterance_approved += 1;
+            if campaign.utterance_approved >= campaign.validation_quorum  {
                 campaign.finish = true;
             }
+
             msg!(
                 "{{ \"event\" : \"validate_utterance\",\
             \"utterance_address\" : \"{:?}\",\

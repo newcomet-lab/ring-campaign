@@ -203,7 +203,7 @@ pub struct OnBuilder<'info> {
     #[account(executable)]
     pub datafarm: AccountInfo<'info>,
     #[account(mut)]
-    pub campaign_account: Loader<'info, CampaignAccount>,
+    pub campaign_account:  Loader<'info, CampaignAccount>,
     pub stake_account: Loader<'info, stakeAccount>,
 }
 
