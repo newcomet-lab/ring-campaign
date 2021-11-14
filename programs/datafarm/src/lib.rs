@@ -144,11 +144,7 @@ pub mod Datafarm {
             3 => state.validator_stake.checked_mul(1000_000_000).unwrap(),
             _ => return Err(ProgramError::Custom(22)),
         };
-        // check if architect staked to this campaign or not
-        // if architect not staked no one can stake to campaign
-        if !camp.stake_status {
-            return Err(ProgramError::Custom(21))
-        }
+
         let cpi_accounts = Transfer {
             from: ctx.accounts.user_token.to_account_info(),
             to: ctx.accounts.pool_vault.to_account_info(),
