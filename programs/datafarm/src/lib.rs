@@ -128,6 +128,27 @@ pub mod Datafarm {
     pub fn stake(ctx: Context<Stake>) -> ProgramResult {
         let stake = &mut ctx.accounts.stake_account.load_mut()?;
         let state = &mut ctx.accounts.cpi_state;
+        if stake.status {
+            return Err(ProgramError::AccountAlreadyInitialized)
+        }
+        let mut camp = ctx.accounts.campaign.load_mut()?;
+        let stake_amount = match stake.role {
+            // Architect
+            1 => {
+                camp.stake_status = true;
+                state.architect_stake.checked_mul(1000_000_000).unwrap()
+            },
+            // Builder
+            2 => state.builder_stake.checked_mul(1000_000_000).unwrap(),
+            // Validator
+            3 => state.validator_stake.checked_mul(1000_000_000).unwrap(),
+            _ => return Err(ProgramError::Custom(22)),
+        };
+        // check if architect staked to this campaign or not
+        // if architect not staked no one can stake to campaign
+        if !camp.stake_status {
+            return Err(ProgramError::Custom(21))
+        }
         let cpi_accounts = Transfer {
             from: ctx.accounts.user_token.to_account_info(),
             to: ctx.accounts.pool_vault.to_account_info(),
@@ -135,17 +156,10 @@ pub mod Datafarm {
         };
         let cpi_program = ctx.accounts.token_program.clone();
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
-        let stake_amount = match stake.role {
-            1 => state.architect_stake.checked_mul(1000_000_000).unwrap(),
-            2 => state.builder_stake.checked_mul(1000_000_000).unwrap(),
-            3 => state.validator_stake.checked_mul(1000_000_000).unwrap(),
-            _ => return Err(ProgramError::InvalidAccountData),
-        };
-        let mut camp = ctx.accounts.campaign.load_mut()?;
         match token::transfer(cpi_ctx, stake_amount) {
             Ok(res) => {}
             Err(e) => {
-                msg!("error is {:?}", e);
+                return Err(e)
             }
         }
         stake.token_amount += stake_amount;
@@ -155,7 +169,7 @@ pub mod Datafarm {
         stake.token_address = ctx.accounts.user_token.key();
         stake.user_address = ctx.accounts.user.key();
         stake.status = true;
-        camp.stake_status = true;
+
         camp.stakeAccount = ctx.accounts.stake_account.key();
         stake.campaign_address = ctx.accounts.campaign.key();
         msg!(
@@ -174,6 +188,10 @@ pub mod Datafarm {
     pub fn unstake(ctx: Context<CloseStake>) -> ProgramResult {
         let stake = &mut ctx.accounts.stake_account.load_mut()?;
         let state = &mut ctx.accounts.cpi_state;
+        if !stake.status {
+            return Err(ProgramError::InsufficientFunds)
+        }
+
         let (_pda, bump_seed) = Pubkey::find_program_address(&[PDA_SEED], ctx.program_id);
         let seeds = &[&PDA_SEED[..], &[bump_seed]];
 
