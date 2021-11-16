@@ -31,6 +31,7 @@ pub struct InitUtteranceAccount<'info> {
     pub builder: AccountInfo<'info>,
     #[account(mut)]
     pub campaign_account: Loader<'info,CampaignAccount>,
+    #[account(mut)]
     pub stake_account: Loader<'info,stakeAccount>,
     pub system_program: AccountInfo<'info>,
 }
@@ -148,6 +149,7 @@ pub struct OnValidator<'info> {
     pub utterance_account: Loader<'info, UtteranceAccount>,
     #[account(mut)]
     pub campaign_account: Loader<'info, CampaignAccount>,
+    #[account(mut)]
     pub stake_account: Loader<'info, stakeAccount>,
 }
 
@@ -196,6 +198,49 @@ pub struct CloseStake<'info> {
     pub(crate) clock: Sysvar<'info, Clock>,
 }
 
+#[derive(Accounts)]
+pub struct RedeemReward<'info> {
+    #[account(mut)]
+    pub(crate) stake_account: Loader<'info, stakeAccount>,
+    user: AccountInfo<'info>,
+    #[account(mut,
+    constraint = user_token.amount >= cpi_state.architect_stake)]
+    user_token: CpiAccount<'info, TokenAccount>,
+    #[account(mut)]
+    pool_vault: CpiAccount<'info, TokenAccount>,
+    #[account(mut)]
+    token_mint: CpiAccount<'info, Mint>,
+    pda_account: AccountInfo<'info>,
+    #[account(mut, state = datafarm)]
+    pub(crate) cpi_state: CpiState<'info, PoolConfig>,
+    #[account(mut)]
+    pub campaign: Loader<'info, CampaignAccount>,
+    #[account(executable)]
+    datafarm: AccountInfo<'info>,
+    system_program: AccountInfo<'info>,
+    token_program: AccountInfo<'info>,
+    pub(crate) clock: Sysvar<'info, Clock>,
+}
+impl<'info> RedeemReward<'info> {
+    pub(crate) fn to_taker(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: self.pool_vault.to_account_info().clone(),
+            to: self.user_token.to_account_info().clone(),
+            authority: self.pda_account.clone(),
+        };
+        let cpi_program = self.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+    pub(crate) fn to_minter(&self) -> CpiContext<'_, '_, '_, 'info, MintTo<'info>> {
+        let cpi_accounts = MintTo {
+            mint: self.token_mint.to_account_info().clone(),
+            to: self.user_token.to_account_info().clone(),
+            authority: self.pda_account.clone(),
+        };
+        let cpi_program = self.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
 impl<'a, 'b, 'c, 'info> From<&Stake<'info>> for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
     fn from(accounts: &Stake<'info>) -> CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {

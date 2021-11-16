@@ -10,6 +10,7 @@ pub struct stakeAccount {
     pub end_block: u64,
     pub weight: u64,
     pub pending_reward: u64,
+    pub rewarded: bool,
     pub status: bool,
     pub token_address: Pubkey,
     pub user_address: Pubkey,

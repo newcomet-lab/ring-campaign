@@ -120,7 +120,6 @@ pub mod Datafarm {
         let mut stake = ctx.accounts.stake_account.load_init()?;
         stake.user_address = ctx.accounts.authority.key();
         stake.bump = bump;
-        stake.status = false;
         stake.role = role;
         Ok(())
     }
@@ -136,6 +135,10 @@ pub mod Datafarm {
             // Architect
             1 => {
                 camp.stake_status = true;
+                stake.pending_reward +=
+                    camp.validation_quorum
+                        .checked_mul(camp.reward_per_validator).unwrap()
+                        .checked_div(camp.min_validator).unwrap();
                 state.architect_stake.checked_mul(1000_000_000).unwrap()
             },
             // Builder
@@ -183,42 +186,62 @@ pub mod Datafarm {
 
     pub fn unstake(ctx: Context<CloseStake>) -> ProgramResult {
         let stake = &mut ctx.accounts.stake_account.load_mut()?;
+        let camp = &mut ctx.accounts.campaign.load_mut()?;
         let state = &mut ctx.accounts.cpi_state;
         if !stake.status {
             return Err(ProgramError::InsufficientFunds)
         }
+        if !stake.rewarded {
+            return Err(ProgramError::InvalidInstructionData)
+        }
+        if !camp.finish {
+            return Err(ProgramError::InvalidInstructionData)
+        }
 
         let (_pda, bump_seed) = Pubkey::find_program_address(&[PDA_SEED], ctx.program_id);
         let seeds = &[&PDA_SEED[..], &[bump_seed]];
-
         stake.end_block = ctx.accounts.clock.slot;
         stake.lock_out_time = ctx.accounts.clock.unix_timestamp;
-        stake.pending_reward = stake
-            .end_block
-            .checked_sub(stake.start_block)
-            .unwrap()
-            .checked_mul(state.reward_per_block)
-            .unwrap()
-            .checked_mul(1_000_000_000)
-            .unwrap();
-        stake.status = false;
         token::transfer(
             ctx.accounts.to_taker().with_signer(&[&seeds[..]]),
             stake.token_amount,
         )?;
+        stake.status = false;
+
+        stake.token_amount = stake.token_amount.checked_sub(stake.token_amount).unwrap();
+        camp.stake_status = false;
+
+        Ok(())
+    }
+    pub fn redeem_reward(ctx:Context<RedeemReward>) ->ProgramResult {
+        let stake = &mut ctx.accounts.stake_account.load_mut()?;
+        let camp = &mut ctx.accounts.campaign.load_mut()?;
+        let state = &mut ctx.accounts.cpi_state;
+        if !stake.status {
+            return Err(ProgramError::InsufficientFunds)
+        }
+        if stake.rewarded {
+            return Err(ProgramError::InvalidInstructionData)
+        }
+        if !camp.finish {
+            return Err(ProgramError::InvalidInstructionData)
+        }
+
+        let (_pda, bump_seed) = Pubkey::find_program_address(&[PDA_SEED], ctx.program_id);
+        let seeds = &[&PDA_SEED[..], &[bump_seed]];
         token::mint_to(
             ctx.accounts.to_minter().with_signer(&[&seeds[..]]),
-            stake.pending_reward,
+            stake.pending_reward
+                .checked_mul(1_000_000_000)
+                .unwrap(),
         )?;
-        stake.token_amount = stake.token_amount.checked_sub(stake.token_amount).unwrap();
-        let mut camp = ctx.accounts.campaign.load_mut()?;
-        camp.stake_status = false;
+        stake.rewarded = true;
         Ok(())
     }
     pub fn submit_utterance(ctx: Context<InitUtteranceAccount>, msg: String) -> ProgramResult {
         let mut utterance = ctx.accounts.utterance_account.load_init()?;
         let campaign = &mut ctx.accounts.campaign_account.load_mut()?;
-        let stake = &mut ctx.accounts.stake_account.load()?;
+        let stake = &mut ctx.accounts.stake_account.load_mut()?;
         if stake.user_address != ctx.accounts.builder.key() {
             return Err(ProgramError::InvalidAccountData);
         }
@@ -231,6 +254,7 @@ pub mod Datafarm {
         if stake.role != 2  {
             return Err(ProgramError::InvalidAccountData);
         }
+        stake.pending_reward = stake.pending_reward.checked_add(campaign.reward_per_builder ).unwrap();
         let given_msg = msg.as_bytes();
         let mut data = [0u8; 256];
         data[..given_msg.len()].copy_from_slice(given_msg);
@@ -260,7 +284,7 @@ pub mod Datafarm {
     pub fn validate(ctx: Context<OnValidator>, status: bool) -> ProgramResult {
         let utterance = &mut ctx.accounts.utterance_account.load_mut()?;
         let campaign = &mut ctx.accounts.campaign_account.load_mut()?;
-        let stake = &mut ctx.accounts.stake_account.load()?;
+        let stake = &mut ctx.accounts.stake_account.load_mut()?;
         if stake.user_address != ctx.accounts.validator.key() {
             return Err(ProgramError::InvalidAccountData);
         }
@@ -274,6 +298,7 @@ pub mod Datafarm {
             return Err(ProgramError::InvalidAccountData);
         }
         let validator = *ctx.accounts.validator.key;
+        stake.pending_reward = stake.pending_reward.checked_add(campaign.reward_per_validator ).unwrap();
         match status {
             true => {
                 utterance.correct = utterance
