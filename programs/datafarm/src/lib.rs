@@ -90,6 +90,11 @@ pub mod Datafarm {
         ) -> ProgramResult {
             let pool = &mut ctx.accounts.pool;
             let campaign = &mut ctx.accounts.CampaignAccount.load_init()?;
+            let (pda, _bump_seed) =
+                Pubkey::find_program_address(&[PDA_SEED], ctx.accounts.datafarm.key);
+            if pool.authority != pda {
+                return Err(ProgramError::IllegalOwner)
+            }
             self.campaigns[self.head as usize] = ctx.accounts.CampaignAccount.key();
             self.head += 1;
             campaign.reward_token = pool.mint;
@@ -112,6 +117,9 @@ pub mod Datafarm {
         }
 
         pub fn update_reward(&mut self, ctx: Context<UpdatePool>, reward: u64) -> ProgramResult {
+            if ctx.accounts.authority.key() != self.authority {
+                return Err(ProgramError::IllegalOwner)
+            }
             self.reward_per_block = reward;
             Ok(())
         }
@@ -188,15 +196,29 @@ pub mod Datafarm {
         let stake = &mut ctx.accounts.stake_account.load_mut()?;
         let camp = &mut ctx.accounts.campaign.load_mut()?;
         let state = &mut ctx.accounts.cpi_state;
+        if stake.user_address != ctx.accounts.user.key(){
+            return Err(ProgramError::IllegalOwner)
+        }
+        if stake.campaign_address != ctx.accounts.campaign.key(){
+            return Err(ProgramError::IllegalOwner)
+        }
+        if ctx.accounts.user.key() != ctx.accounts.user_token.owner.key() {
+            return Err(ProgramError::IllegalOwner)
+        }
+        if ctx.accounts.user_token.mint.key() != camp.reward_token {
+            return Err(ProgramError::InvalidInstructionData)
+        }
         if !stake.status {
             return Err(ProgramError::InsufficientFunds)
         }
         if !stake.rewarded {
+            // user should claim reward before unstake
             return Err(ProgramError::InvalidInstructionData)
         }
         if !camp.finish {
             return Err(ProgramError::InvalidInstructionData)
         }
+
 
         let (_pda, bump_seed) = Pubkey::find_program_address(&[PDA_SEED], ctx.program_id);
         let seeds = &[&PDA_SEED[..], &[bump_seed]];
@@ -208,7 +230,7 @@ pub mod Datafarm {
         )?;
         stake.status = false;
 
-        stake.token_amount = stake.token_amount.checked_sub(stake.token_amount).unwrap();
+        stake.token_amount = 0 ;
         camp.stake_status = false;
 
         Ok(())

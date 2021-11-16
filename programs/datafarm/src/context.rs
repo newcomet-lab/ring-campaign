@@ -178,10 +178,10 @@ impl<'info> CloseStake<'info> {
 pub struct CloseStake<'info> {
     #[account(mut)]
     pub(crate) stake_account: Loader<'info, stakeAccount>,
-    user: AccountInfo<'info>,
+    pub(crate) user: AccountInfo<'info>,
     #[account(mut,
-    constraint = user_token.amount >= cpi_state.architect_stake)]
-    user_token: CpiAccount<'info, TokenAccount>,
+    constraint = user_token.owner == user.key())]
+    pub(crate) user_token: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
     pool_vault: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
