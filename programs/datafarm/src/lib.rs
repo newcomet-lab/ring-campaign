@@ -172,7 +172,6 @@ pub mod Datafarm {
         stake.token_amount += stake_amount;
         stake.start_block = ctx.accounts.clock.slot;
         stake.lock_in_time = ctx.accounts.clock.unix_timestamp;
-        stake.pending_reward = 0;
         stake.token_address = ctx.accounts.user_token.key();
         stake.user_address = ctx.accounts.user.key();
         stake.status = true;
@@ -347,6 +346,8 @@ pub mod Datafarm {
                 "{{ \"event\" : \"validate_utterance\",\
             \"utterance_address\" : \"{:?}\",\
             \"data\" : \"{:?}\",\
+            \"campaign_topic\" : \"{:?}\",\
+            \"campaign_subject\" : \"{:?}\",\
             \"validator\" : \"{:?}\",\
             \"builder\" : \"{:?}\",\
             \"correct\" : \"{:?}\",\
@@ -355,6 +356,8 @@ pub mod Datafarm {
           }}",
                 ctx.accounts.utterance_account.key(),
                 utterance.data,
+                campaign.domain,
+                campaign.subject,
                 ctx.accounts.validator.key(),
                 utterance.builder,
                 utterance.correct,
