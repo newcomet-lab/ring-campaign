@@ -10,12 +10,14 @@ use std::io::Write;
 
 mod account;
 mod context;
+mod error;
 
 const SMALL: usize = 128;
 const MEDIUM: usize = 256;
 
 #[program]
 pub mod Datafarm {
+    use crate::error::FarmError;
     use super::*;
 
     const PDA_SEED: &[u8] = b"Staking";
@@ -93,7 +95,7 @@ pub mod Datafarm {
             let (pda, _bump_seed) =
                 Pubkey::find_program_address(&[PDA_SEED], ctx.accounts.datafarm.key);
             if pool.authority != pda {
-                return Err(ProgramError::IllegalOwner)
+                return Err(FarmError::InvalidPDA.into())
             }
             self.campaigns[self.head as usize] = ctx.accounts.CampaignAccount.key();
             self.head += 1;
@@ -118,7 +120,7 @@ pub mod Datafarm {
 
         pub fn update_reward(&mut self, ctx: Context<UpdatePool>, reward: u64) -> ProgramResult {
             if ctx.accounts.authority.key() != self.authority {
-                return Err(ProgramError::IllegalOwner)
+                return Err(FarmError::InvalidAuthority.into())
             }
             self.reward_per_block = reward;
             Ok(())
@@ -136,7 +138,7 @@ pub mod Datafarm {
         let stake = &mut ctx.accounts.stake_account.load_mut()?;
         let state = &mut ctx.accounts.cpi_state;
         if stake.status {
-            return Err(ProgramError::AccountAlreadyInitialized)
+            return Err(FarmError::UserAlreadyStakes.into())
         }
         let mut camp = ctx.accounts.campaign.load_mut()?;
         let stake_amount = match stake.role {
@@ -153,7 +155,7 @@ pub mod Datafarm {
             2 => state.builder_stake.checked_mul(1000_000_000).unwrap(),
             // Validator
             3 => state.validator_stake.checked_mul(1000_000_000).unwrap(),
-            _ => return Err(ProgramError::Custom(22)),
+            _ => return Err(FarmError::InvalidRole.into()),
         };
 
         let cpi_accounts = Transfer {
@@ -196,26 +198,25 @@ pub mod Datafarm {
         let camp = &mut ctx.accounts.campaign.load_mut()?;
         let state = &mut ctx.accounts.cpi_state;
         if stake.user_address != ctx.accounts.user.key(){
-            return Err(ProgramError::IllegalOwner)
+            return Err(FarmError::InvalidStakeOwner.into())
         }
         if stake.campaign_address != ctx.accounts.campaign.key(){
-            return Err(ProgramError::IllegalOwner)
+            return Err(FarmError::InvalidStakeCampaign.into())
         }
         if ctx.accounts.user.key() != ctx.accounts.user_token.owner.key() {
-            return Err(ProgramError::IllegalOwner)
+            return Err(FarmError::InvalidTokenOwner.into())
         }
         if ctx.accounts.user_token.mint.key() != camp.reward_token {
-            return Err(ProgramError::InvalidInstructionData)
+            return Err(FarmError::InvalidTokenMint.into())
         }
         if !stake.status {
-            return Err(ProgramError::InsufficientFunds)
+            return Err(FarmError::InvalidStakeAccount.into())
         }
         if !stake.rewarded {
-            // user should claim reward before unstake
-            return Err(ProgramError::InvalidInstructionData)
+            return Err(FarmError::InvalidOrder.into())
         }
         if !camp.finish {
-            return Err(ProgramError::InvalidInstructionData)
+            return Err(FarmError::UnstakeProhibted.into())
         }
 
 
@@ -239,13 +240,13 @@ pub mod Datafarm {
         let camp = &mut ctx.accounts.campaign.load_mut()?;
         let state = &mut ctx.accounts.cpi_state;
         if !stake.status {
-            return Err(ProgramError::InsufficientFunds)
+            return Err(FarmError::InvalidStakeAccount.into())
         }
         if stake.rewarded {
-            return Err(ProgramError::InvalidInstructionData)
+            return Err(FarmError::RewardReedemedBefore.into())
         }
         if !camp.finish {
-            return Err(ProgramError::InvalidInstructionData)
+            return Err(FarmError::UnstakeProhibted.into())
         }
 
         let (_pda, bump_seed) = Pubkey::find_program_address(&[PDA_SEED], ctx.program_id);
@@ -264,16 +265,16 @@ pub mod Datafarm {
         let campaign = &mut ctx.accounts.campaign_account.load_mut()?;
         let stake = &mut ctx.accounts.stake_account.load_mut()?;
         if stake.user_address != ctx.accounts.builder.key() {
-            return Err(ProgramError::InvalidAccountData);
+            return Err(FarmError::InvalidRole.into());
         }
         if stake.campaign_address != ctx.accounts.campaign_account.key() {
-            return Err(ProgramError::InvalidAccountData);
+            return Err(FarmError::InvalidStakeCampaign.into())
         }
         if !stake.status {
-            return Err(ProgramError::InvalidAccountData);
+            return Err(FarmError::InvalidStakeAccount.into())
         }
         if stake.role != 2  {
-            return Err(ProgramError::InvalidAccountData);
+            return Err(FarmError::WrongBuilderRole.into());
         }
         stake.pending_reward = stake.pending_reward.checked_add(campaign.reward_per_builder ).unwrap();
         let given_msg = msg.as_bytes();
@@ -307,16 +308,16 @@ pub mod Datafarm {
         let campaign = &mut ctx.accounts.campaign_account.load_mut()?;
         let stake = &mut ctx.accounts.stake_account.load_mut()?;
         if stake.user_address != ctx.accounts.validator.key() {
-            return Err(ProgramError::InvalidAccountData);
+            return Err(FarmError::InvalidRole.into());
         }
         if stake.campaign_address != ctx.accounts.campaign_account.key() {
-            return Err(ProgramError::InvalidAccountData);
+            return Err(FarmError::InvalidStakeCampaign.into())
         }
         if !stake.status {
-            return Err(ProgramError::InvalidAccountData);
+            return Err(FarmError::InvalidStakeAccount.into())
         }
         if stake.role != 3  {
-            return Err(ProgramError::InvalidAccountData);
+            return Err(FarmError::WrongValidatorRole.into());
         }
         let validator = *ctx.accounts.validator.key;
         stake.pending_reward = stake.pending_reward.checked_add(campaign.reward_per_validator ).unwrap();
