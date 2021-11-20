@@ -203,8 +203,7 @@ pub struct RedeemReward<'info> {
     #[account(mut)]
     pub(crate) stake_account: Loader<'info, stakeAccount>,
     user: AccountInfo<'info>,
-    #[account(mut,
-    constraint = user_token.amount >= cpi_state.architect_stake)]
+    #[account(mut)]
     user_token: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
     pool_vault: CpiAccount<'info, TokenAccount>,
