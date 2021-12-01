@@ -82,8 +82,7 @@ pub mod Datafarm {
             period: u64,
             min_builder: u64,
             min_validator: u64,
-            reward_per_builder: u64,
-            reward_per_validator: u64,
+            reward_per_utterance: u64,
             validation_quorum: u64,
             domain: String,
             subject: String,
@@ -108,8 +107,7 @@ pub mod Datafarm {
             campaign.subject = string_small(subject);
             campaign.explain = string_medium(explain);
             campaign.phrase = string_medium(phrase);
-            campaign.reward_per_builder = reward_per_builder;
-            campaign.reward_per_validator = reward_per_validator;
+            campaign.reward_per_utterance = reward_per_utterance;
             campaign.validation_quorum = validation_quorum;
             campaign.architect = ctx.accounts.architect.key();
             /// later should change to emit
@@ -147,7 +145,7 @@ pub mod Datafarm {
                 camp.stake_status = true;
                 stake.pending_reward +=
                     camp.validation_quorum
-                        .checked_mul(camp.reward_per_validator).unwrap()
+                        .checked_mul(camp.reward_per_utterance).unwrap()
                         .checked_div(camp.min_validator).unwrap();
                 state.architect_stake.checked_mul(1000_000_000).unwrap()
             },
@@ -248,7 +246,11 @@ pub mod Datafarm {
         if !camp.finish {
             return Err(FarmError::UnstakeProhibted.into())
         }
-
+        // calculate reward for architect
+        if stake.role == 1 {
+            stake.pending_reward = camp.reward_per_utterance
+                .checked_mul(camp.utterance_approved).unwrap();
+        }
         let (_pda, bump_seed) = Pubkey::find_program_address(&[PDA_SEED], ctx.program_id);
         let seeds = &[&PDA_SEED[..], &[bump_seed]];
         token::mint_to(
@@ -276,7 +278,7 @@ pub mod Datafarm {
         if stake.role != 2  {
             return Err(FarmError::WrongBuilderRole.into());
         }
-        stake.pending_reward = stake.pending_reward.checked_add(campaign.reward_per_builder ).unwrap();
+        stake.pending_reward = stake.pending_reward.checked_add(campaign.reward_per_utterance ).unwrap();
         let given_msg = msg.as_bytes();
         let mut data = [0u8; 256];
         data[..given_msg.len()].copy_from_slice(given_msg);
@@ -320,7 +322,7 @@ pub mod Datafarm {
             return Err(FarmError::WrongValidatorRole.into());
         }
         let validator = *ctx.accounts.validator.key;
-        stake.pending_reward = stake.pending_reward.checked_add(campaign.reward_per_validator ).unwrap();
+        stake.pending_reward = stake.pending_reward.checked_add(campaign.reward_per_utterance ).unwrap();
         match status {
             true => {
                 utterance.correct = utterance

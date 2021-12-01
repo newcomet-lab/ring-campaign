@@ -160,8 +160,7 @@ describe('datafarm', () => {
         const period = new anchor.BN(14);// number of day for staking
         const min_builder = new anchor.BN(5);// minimum builder needed by this campaign
         const min_validator = new anchor.BN(2);/// minimum validation needed by per utterance
-        const reward_per_builder = new anchor.BN(3); // reward for builder
-        const reward_per_validator = new anchor.BN(2);// reward of validator per utterance
+        const reward_per_utterance = new anchor.BN(3); // reward for builder
         const validation_quorum = new anchor.BN(3); // later used to calculate minimum corection
         const topic_domain = "my topic";
         const topic_subject = "new subject";
@@ -173,8 +172,7 @@ describe('datafarm', () => {
             period,
             min_builder,
             min_validator,
-            reward_per_builder,
-            reward_per_validator,
+            reward_per_utterance,
             validation_quorum,
             topic_domain,
             topic_subject,
@@ -263,8 +261,7 @@ describe('datafarm', () => {
         const period = new anchor.BN(14);
         const min_builder = new anchor.BN(5);
         const min_validator = new anchor.BN(5);
-        const reward_per_builder = new anchor.BN(3);
-        const reward_per_validator = new anchor.BN(2);
+        const reward_per_utterance = new anchor.BN(3);
         const validation_quorum = new anchor.BN(64);
         const topic_domain = "my topic B";
         const topic_subject = "new subject B";
@@ -276,8 +273,7 @@ describe('datafarm', () => {
             period,
             min_builder,
             min_validator,
-            reward_per_builder,
-            reward_per_validator,
+            reward_per_utterance,
             validation_quorum,
             topic_domain,
             topic_subject,
