@@ -229,7 +229,6 @@ pub mod Datafarm {
         stake.status = false;
 
         stake.token_amount = 0 ;
-        camp.stake_status = false;
 
         Ok(())
     }
