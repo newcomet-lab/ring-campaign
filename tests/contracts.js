@@ -72,7 +72,7 @@ describe('datafarm', () => {
         assert.ok(true);
     }).timeout(90000);
     it("Airdrop SNS token to users", async () => {
-        mint = await splToken.Token.createMint(provider.connection, hadi, hadi.publicKey, null, 9, splToken.TOKEN_PROGRAM_ID,)
+        mint = await splToken.Token.createMint(provider.connection, hadi, hadi.publicKey, hadi.publicKey, 9, splToken.TOKEN_PROGRAM_ID,)
         console.log('\tSNS Token public address: ' + mint.publicKey.toBase58());
         architectToken = await userCharge(mint, architect, hadi);
         architectBToken = await userCharge(mint, architectB, hadi);
@@ -899,6 +899,20 @@ describe('datafarm', () => {
         assert.ok(tokenAccount.owner, architect.publicKey);
     }).timeout(90000);
 
-
+    it("Airdrop From Smart Contract", async () => {
+        const pool = await dataProgram.state.fetch();
+        const newTester= anchor.web3.Keypair.generate();
+        const tokenAccount = await mint.getOrCreateAssociatedAccountInfo(newTester.publicKey);
+        await dataProgram.rpc.airdrop(
+            {
+                accounts: {
+                    userToken :tokenAccount.address,
+                    pdaAccount :pda,
+                    tokenMint: pool.mint,
+                    tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
+                    clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
+                },
+            });
+    });
 });
 

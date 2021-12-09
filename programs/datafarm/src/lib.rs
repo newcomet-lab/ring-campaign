@@ -52,13 +52,22 @@ pub mod Datafarm {
                 Pubkey::find_program_address(&[PDA_SEED], ctx.accounts.staking_program.key);
             token::set_authority(ctx.accounts.into(), AuthorityType::AccountOwner, Some(pda))?;
 
+            // Transfer Mint Authority
             let cpi_accounts = SetAuthority {
                 account_or_mint: ctx.accounts.mint.to_account_info().clone(),
                 current_authority: ctx.accounts.authority.clone(),
             };
             let cpi_program = ctx.accounts.token_program.to_account_info();
-            let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+            let cpi_ctx = CpiContext::new(cpi_program.clone(), cpi_accounts);
             token::set_authority(cpi_ctx, AuthorityType::MintTokens, Some(pda))?;
+
+            // transfer freeze authority
+            let cpi_accounts_freeze = SetAuthority {
+                account_or_mint: ctx.accounts.mint.to_account_info().clone(),
+                current_authority: ctx.accounts.authority.clone(),
+            };
+            let cpi_ctx_freeze = CpiContext::new(cpi_program, cpi_accounts_freeze);
+            token::set_authority(cpi_ctx_freeze, AuthorityType::FreezeAccount, Some(pda))?;
 
             Ok(Self {
                 authority: pda.key(),
@@ -131,7 +140,15 @@ pub mod Datafarm {
         stake.role = role;
         Ok(())
     }
-
+    pub fn airdrop(ctx: Context<Airdrop>) -> ProgramResult {
+        let (_pda, bump_seed) = Pubkey::find_program_address(&[PDA_SEED], ctx.program_id);
+        let seeds = &[&PDA_SEED[..], &[bump_seed]];
+        token::mint_to(
+            ctx.accounts.to_minter().with_signer(&[&seeds[..]]),
+            1_000_000_000_000,
+        )?;
+        Ok(())
+    }
     pub fn stake(ctx: Context<Stake>) -> ProgramResult {
         let stake = &mut ctx.accounts.stake_account.load_mut()?;
         let state = &mut ctx.accounts.cpi_state;
@@ -255,8 +272,7 @@ pub mod Datafarm {
         token::mint_to(
             ctx.accounts.to_minter().with_signer(&[&seeds[..]]),
             stake.pending_reward
-                .checked_mul(1_000_000_000)
-                .unwrap(),
+                .checked_mul(1_000_000_000).unwrap(),
         )?;
         stake.rewarded = true;
         Ok(())
