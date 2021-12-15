@@ -2,7 +2,8 @@ use crate::account::*;
 use crate::Datafarm::PoolConfig;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
-use anchor_spl::token::{self, Burn, Mint, MintTo, SetAuthority, TokenAccount, Transfer, ID};
+use anchor_spl::token::{self, Burn, Mint, MintTo, SetAuthority, TokenAccount, Transfer, ID, FreezeAccount, ThawAccount};
+
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct InitStakeAccount<'info> {
@@ -73,7 +74,48 @@ pub struct InitPool<'info> {
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
 }
-
+#[derive(Accounts)]
+pub struct Freeze<'info> {
+    #[account(mut)]
+    user_token: CpiAccount<'info, TokenAccount>,
+    #[account(mut)]
+    token_mint: CpiAccount<'info, Mint>,
+    pda_account: AccountInfo<'info>,
+    token_program: AccountInfo<'info>,
+    pub(crate) clock: Sysvar<'info, Clock>,
+}
+impl<'info> Freeze<'info> {
+    pub(crate) fn to_freezer(&self) -> CpiContext<'_, '_, '_, 'info, FreezeAccount<'info>> {
+        let cpi_accounts = FreezeAccount {
+            mint: self.token_mint.to_account_info().clone(),
+            account: self.user_token.to_account_info().clone(),
+            authority: self.pda_account.clone(),
+        };
+        let cpi_program = self.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
+#[derive(Accounts)]
+pub struct Thaw<'info> {
+    #[account(mut)]
+    user_token: CpiAccount<'info, TokenAccount>,
+    #[account(mut)]
+    token_mint: CpiAccount<'info, Mint>,
+    pda_account: AccountInfo<'info>,
+    token_program: AccountInfo<'info>,
+    pub(crate) clock: Sysvar<'info, Clock>,
+}
+impl<'info> Thaw<'info> {
+    pub(crate) fn to_warmer(&self) -> CpiContext<'_, '_, '_, 'info, ThawAccount<'info>> {
+        let cpi_accounts = ThawAccount {
+            mint: self.token_mint.to_account_info().clone(),
+            account: self.user_token.to_account_info().clone(),
+            authority: self.pda_account.clone(),
+        };
+        let cpi_program = self.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
 #[derive(Accounts)]
 pub struct Airdrop<'info> {
     #[account(mut)]
@@ -200,6 +242,7 @@ impl<'info> CloseStake<'info> {
 pub struct CloseStake<'info> {
     #[account(mut)]
     pub(crate) stake_account: Loader<'info, stakeAccount>,
+    #[account(signer)]
     pub(crate) user: AccountInfo<'info>,
     #[account(mut,
     constraint = user_token.owner == user.key())]
@@ -224,8 +267,9 @@ pub struct CloseStake<'info> {
 pub struct RedeemReward<'info> {
     #[account(mut)]
     pub(crate) stake_account: Loader<'info, stakeAccount>,
+    #[account(signer)]
     user: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut, constraint = user_token.owner == user.key())]
     user_token: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
     pool_vault: CpiAccount<'info, TokenAccount>,

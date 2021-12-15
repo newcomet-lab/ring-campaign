@@ -27,6 +27,7 @@ pub mod Datafarm {
         pub mint: Pubkey,
         pub vault: Pubkey,
         pub authority: Pubkey,
+        pub admin: Pubkey,
         pub head: u64,
         pub campaigns: [Pubkey; 20],
         pub architect_stake: u64,
@@ -71,6 +72,7 @@ pub mod Datafarm {
 
             Ok(Self {
                 authority: pda.key(),
+                admin :ctx.accounts.authority.key(),
                 mint: ctx.accounts.mint.key(),
                 vault: ctx.accounts.vault.key(),
                 head: 0,
@@ -140,12 +142,28 @@ pub mod Datafarm {
         stake.role = role;
         Ok(())
     }
+    pub fn freeze(ctx: Context<Freeze>) -> ProgramResult {
+        let (_pda, bump_seed) = Pubkey::find_program_address(&[PDA_SEED], ctx.program_id);
+        let seeds = &[&PDA_SEED[..], &[bump_seed]];
+        token::freeze_account(
+            ctx.accounts.to_freezer().with_signer(&[&seeds[..]]),
+        )?;
+        Ok(())
+    }
+    pub fn thaw(ctx: Context<Thaw>) -> ProgramResult {
+        let (_pda, bump_seed) = Pubkey::find_program_address(&[PDA_SEED], ctx.program_id);
+        let seeds = &[&PDA_SEED[..], &[bump_seed]];
+        token::thaw_account(
+            ctx.accounts.to_warmer().with_signer(&[&seeds[..]]),
+        )?;
+        Ok(())
+    }
     pub fn airdrop(ctx: Context<Airdrop>) -> ProgramResult {
         let (_pda, bump_seed) = Pubkey::find_program_address(&[PDA_SEED], ctx.program_id);
         let seeds = &[&PDA_SEED[..], &[bump_seed]];
         token::mint_to(
             ctx.accounts.to_minter().with_signer(&[&seeds[..]]),
-            1_000_000_000_000,
+            1_000_000_000_000_000,
         )?;
         Ok(())
     }
@@ -155,6 +173,7 @@ pub mod Datafarm {
         if stake.status {
             return Err(FarmError::UserAlreadyStakes.into())
         }
+
         let mut camp = ctx.accounts.campaign.load_mut()?;
         let stake_amount = match stake.role {
             // Architect
@@ -186,6 +205,7 @@ pub mod Datafarm {
                 return Err(e)
             }
         }
+
         stake.token_amount += stake_amount;
         stake.start_block = ctx.accounts.clock.slot;
         stake.lock_in_time = ctx.accounts.clock.unix_timestamp;
@@ -230,9 +250,9 @@ pub mod Datafarm {
         if !stake.rewarded {
             return Err(FarmError::InvalidOrder.into())
         }
-        if !camp.finish {
+        /*if !camp.finish {
             return Err(FarmError::UnstakeProhibted.into())
-        }
+        }*/
 
 
         let (_pda, bump_seed) = Pubkey::find_program_address(&[PDA_SEED], ctx.program_id);
@@ -259,9 +279,9 @@ pub mod Datafarm {
         if stake.rewarded {
             return Err(FarmError::RewardReedemedBefore.into())
         }
-        if !camp.finish {
+     /*   if !camp.finish {
             return Err(FarmError::UnstakeProhibted.into())
-        }
+        }*/
         // calculate reward for architect
         if stake.role == 1 {
             stake.pending_reward = camp.reward_per_utterance
