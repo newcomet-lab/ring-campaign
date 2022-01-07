@@ -75,6 +75,9 @@ pub struct InitPool<'info> {
     pub token_program: AccountInfo<'info>,
 }
 #[derive(Accounts)]
+pub struct Init {}
+
+#[derive(Accounts)]
 pub struct Freeze<'info> {
     #[account(mut)]
     user_token: CpiAccount<'info, TokenAccount>,
@@ -116,28 +119,7 @@ impl<'info> Thaw<'info> {
         CpiContext::new(cpi_program, cpi_accounts)
     }
 }
-#[derive(Accounts)]
-pub struct Airdrop<'info> {
-    #[account(mut)]
-    user_token: CpiAccount<'info, TokenAccount>,
-    #[account(mut)]
-    token_mint: CpiAccount<'info, Mint>,
-    pda_account: AccountInfo<'info>,
-    token_program: AccountInfo<'info>,
-    pub(crate) clock: Sysvar<'info, Clock>,
-}
-impl<'info> Airdrop<'info> {
 
-    pub(crate) fn to_minter(&self) -> CpiContext<'_, '_, '_, 'info, MintTo<'info>> {
-        let cpi_accounts = MintTo {
-            mint: self.token_mint.to_account_info().clone(),
-            to: self.user_token.to_account_info().clone(),
-            authority: self.pda_account.clone(),
-        };
-        let cpi_program = self.token_program.to_account_info();
-        CpiContext::new(cpi_program, cpi_accounts)
-    }
-}
 impl<'info> From<&mut InitPool<'info>> for CpiContext<'_, '_, '_, 'info, SetAuthority<'info>> {
     fn from(accounts: &mut InitPool<'info>) -> Self {
         let cpi_accounts = SetAuthority {

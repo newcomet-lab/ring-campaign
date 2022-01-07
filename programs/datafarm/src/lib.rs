@@ -75,7 +75,7 @@ pub mod Datafarm {
                 admin :ctx.accounts.authority.key(),
                 mint: ctx.accounts.mint.key(),
                 vault: ctx.accounts.vault.key(),
-                head: 0,
+                head: 0 as u64,
                 campaigns: [Pubkey::default(); 20],
                 reward_per_block,
                 architect_stake,
@@ -142,6 +142,10 @@ pub mod Datafarm {
         stake.role = role;
         Ok(())
     }
+    pub fn initialize(_ctx: Context<Init>) -> ProgramResult {
+        msg!("init call");
+        Ok(())
+    }
     pub fn freeze(ctx: Context<Freeze>) -> ProgramResult {
         let (_pda, bump_seed) = Pubkey::find_program_address(&[PDA_SEED], ctx.program_id);
         let seeds = &[&PDA_SEED[..], &[bump_seed]];
@@ -158,12 +162,13 @@ pub mod Datafarm {
         )?;
         Ok(())
     }
-    pub fn airdrop(ctx: Context<Airdrop>) -> ProgramResult {
+    pub fn airdrop(ctx: Context<Airdrop>, amount:u64) -> ProgramResult {
         let (_pda, bump_seed) = Pubkey::find_program_address(&[PDA_SEED], ctx.program_id);
         let seeds = &[&PDA_SEED[..], &[bump_seed]];
+        let total = amount.checked_mul(1_000_000_000).unwrap();
         token::mint_to(
             ctx.accounts.to_minter().with_signer(&[&seeds[..]]),
-            1_000_000_000_000_000,
+            total
         )?;
         Ok(())
     }
@@ -416,7 +421,28 @@ pub mod Datafarm {
 }
 
 
+#[derive(Accounts)]
+pub struct Airdrop<'info> {
+    #[account(mut)]
+    user_token: CpiAccount<'info, TokenAccount>,
+    #[account(mut)]
+    token_mint: CpiAccount<'info, Mint>,
+    pda_account: AccountInfo<'info>,
+    token_program: AccountInfo<'info>,
+    pub(crate) clock: Sysvar<'info, Clock>,
+}
+impl<'info> Airdrop<'info> {
 
+    pub(crate) fn to_minter(&self) -> CpiContext<'_, '_, '_, 'info, MintTo<'info>> {
+        let cpi_accounts = MintTo {
+            mint: self.token_mint.to_account_info().clone(),
+            to: self.user_token.to_account_info().clone(),
+            authority: self.pda_account.clone(),
+        };
+        let cpi_program = self.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
 
 pub fn string_small(input: String) -> [u8; SMALL] {
     let given_input = input.as_bytes();

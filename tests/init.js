@@ -10,7 +10,7 @@ const {
 } = require("@solana/web3.js");
 const {userCharge, ourCharge, vaultCharge,findAssociatedTokenAddress, hash} = require("./helper");
 const splToken = require('@solana/spl-token');
-const {createTokenAccount} = require("@project-serum/common");
+const {createTokenAccount, sleep} = require("@project-serum/common");
 const TokenInstructions = require("@project-serum/serum").TokenInstructions;
 
 describe('Initialize Data Yield Farm', () => {
@@ -24,9 +24,11 @@ describe('Initialize Data Yield Farm', () => {
     const program = new anchor.Program(data_idl, data_idl.metadata.address, anchor.getProvider());
     let admin ;
     let mint;
+
     it("Create SNS token for test", async () => {
         admin = anchor.web3.Keypair.generate();
-        await provider.connection.requestAirdrop(admin.publicKey, 3000000000);
+        await provider.connection.requestAirdrop(admin.publicKey, 1*anchor.web3.LAMPORTS_PER_SOL);
+        await provider.connection.requestAirdrop(provider.wallet.publicKey, 1*anchor.web3.LAMPORTS_PER_SOL);
         mint = await splToken.Token.createMint(provider.connection, admin, admin.publicKey, admin.publicKey, 9, splToken.TOKEN_PROGRAM_ID);
         console.log('\ttest SNS Token address: ' + mint.publicKey.toBase58());
     }).timeout(90000);
