@@ -142,10 +142,7 @@ pub mod Datafarm {
         stake.role = role;
         Ok(())
     }
-    pub fn initialize(_ctx: Context<Init>) -> ProgramResult {
-        msg!("init call");
-        Ok(())
-    }
+
     pub fn freeze(ctx: Context<Freeze>) -> ProgramResult {
         let (_pda, bump_seed) = Pubkey::find_program_address(&[PDA_SEED], ctx.program_id);
         let seeds = &[&PDA_SEED[..], &[bump_seed]];

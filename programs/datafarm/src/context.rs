@@ -66,6 +66,8 @@ pub struct InitPool<'info> {
     #[account(signer)]
     pub authority: AccountInfo<'info>,
     pub staking_program: AccountInfo<'info>,
+    #[account(mut)]
+    pub pda: AccountInfo<'info>,
     #[account(mut,
     constraint = vault.owner == *authority.key)]
     pub vault: CpiAccount<'info, TokenAccount>,
@@ -74,8 +76,7 @@ pub struct InitPool<'info> {
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
 }
-#[derive(Accounts)]
-pub struct Init {}
+
 
 #[derive(Accounts)]
 pub struct Freeze<'info> {

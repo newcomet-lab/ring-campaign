@@ -9,30 +9,23 @@ const {
     SystemProgram,
 } = require("@solana/web3.js");
 const {userCharge, ourCharge, vaultCharge,findAssociatedTokenAddress, hash} = require("./helper");
-const splToken = require('@solana/spl-token');
+const {TOKEN_PROGRAM_ID,Token} = require('@solana/spl-token');
 const {createTokenAccount, sleep} = require("@project-serum/common");
 const TokenInstructions = require("@project-serum/serum").TokenInstructions;
 
 describe('Initialize Data Yield Farm', () => {
     anchor.setProvider(anchor.Provider.env());
-    const provider = anchor.getProvider();
+
     const data_idl = JSON.parse(
         require('fs')
             .readFileSync('target/idl/Datafarm.json', 'utf8')
             .toString())
 
     const program = new anchor.Program(data_idl, data_idl.metadata.address, anchor.getProvider());
+    const provider = anchor.getProvider();
     let admin ;
-    let mint;
-
-    it("Create SNS token for test", async () => {
-        admin = anchor.web3.Keypair.generate();
-        await provider.connection.requestAirdrop(admin.publicKey, 1*anchor.web3.LAMPORTS_PER_SOL);
-        await provider.connection.requestAirdrop(provider.wallet.publicKey, 1*anchor.web3.LAMPORTS_PER_SOL);
-        mint = await splToken.Token.createMint(provider.connection, admin, admin.publicKey, admin.publicKey, 9, splToken.TOKEN_PROGRAM_ID);
-        console.log('\ttest SNS Token address: ' + mint.publicKey.toBase58());
-    }).timeout(90000);
-
+    let mint  = new anchor.web3.PublicKey('BSNHwP8nRzvgurmn6FPxUQkWY2KYC64FGPMU1QKzxuiD');
+    let poolVault  =new anchor.web3.PublicKey('DEhtrRycYC2gZmv4z9WCD6qvPrtWdLD8dEHPY4qr856y');
     it("Initialize Pool", async () => {
         const architect_stake = new anchor.BN(20);
         const builder_stake = new anchor.BN(20);
@@ -41,26 +34,27 @@ describe('Initialize Data Yield Farm', () => {
         const reward_per_block = new anchor.BN(3);
         const pool_cap = new anchor.BN(250000000);
         const penalty = new anchor.BN(3);
-        const poolVault = await mint.getOrCreateAssociatedAccountInfo(admin.publicKey);
+        const [pda,bump] = await anchor.web3.PublicKey.findProgramAddress(
+            [Buffer.from(anchor.utils.bytes.utf8.encode("Staking"))],
+            program.programId
+        );
         await program.state.rpc.new(
             architect_stake, builder_stake, validator_stake,
             reward_apy, pool_cap, penalty, reward_per_block,
             {
                 accounts: {
-                    authority: admin.publicKey,
-                    mint: mint.publicKey,
-                    vault: poolVault.address,
+                    authority: provider.wallet.publicKey,
+                    pda:pda ,
+                    mint: mint,
+                    vault: poolVault,
                     stakingProgram: program.programId,
                     tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
                 },
-                signers: [admin]
+                signers: [provider.wallet]
             });
         let pool = await program.state.fetch();
         const change_vault = await mint.getAccountInfo(pool.vault);
-        const pda = await anchor.web3.PublicKey.findProgramAddress(
-            [Buffer.from(anchor.utils.bytes.utf8.encode("Staking"))],
-            program.programId
-        )[0];
+
         assert.ok(change_vault.owner, pda);
     }).timeout(90000);
 });
