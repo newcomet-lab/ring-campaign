@@ -22,7 +22,7 @@ describe('Initialize Data Yield Farm', () => {
             .toString())
 
     const program = new anchor.Program(data_idl, data_idl.metadata.address, anchor.getProvider());
-    const ks_pool = fs.readFileSync("/home/hadi/.config/solana/id.json", {encoding: 'utf8'});
+    const ks_pool = fs.readFileSync("/root/.config/solana/id.json", {encoding: 'utf8'});
     const kb_pool = Buffer.from(JSON.parse(ks_pool));
     let admin = new anchor.web3.Account(kb_pool);
     let mint;

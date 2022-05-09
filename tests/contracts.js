@@ -24,18 +24,18 @@ describe('datafarm', () => {
 
     const dataProgram = new anchor.Program(data_idl, data_idl.metadata.address, anchor.getProvider());
 
-    const architect = anchor.web3.Keypair.generate();
-    const architectB = anchor.web3.Keypair.generate();
-    const builder = anchor.web3.Keypair.generate();
-    const validator = anchor.web3.Keypair.generate();
-    const validatorB = anchor.web3.Keypair.generate();
-    const validatorC = anchor.web3.Keypair.generate();
+    const architect = new anchor.web3.Account(Buffer.from(JSON.parse("[67,248,87,21,143,203,213,213,143,135,249,159,70,37,29,242,60,84,134,6,85,12,162,184,128,146,224,98,8,217,229,253,43,238,68,87,96,38,253,37,215,117,44,163,152,180,130,125,134,125,37,50,213,117,112,119,61,188,223,90,11,234,4,74]")));
+    const architectB = new anchor.web3.Account(Buffer.from(JSON.parse("[238,44,213,9,203,44,154,87,151,148,37,224,211,152,14,78,84,218,0,106,129,151,6,138,188,141,106,221,70,195,124,244,70,79,124,28,49,186,13,66,235,220,131,126,42,111,250,196,5,211,100,181,117,76,166,227,212,145,0,239,207,92,161,66]")));
+    const builder = new anchor.web3.Account(Buffer.from(JSON.parse("[79,224,231,254,196,98,204,172,7,92,237,50,18,37,79,84,101,165,9,14,152,252,187,46,17,247,122,105,21,230,54,162,171,207,65,208,112,161,12,207,32,55,104,40,0,188,56,81,93,222,144,35,227,7,110,100,80,92,88,151,44,214,137,138]")));
+    const validator = new anchor.web3.Account(Buffer.from(JSON.parse("[130,222,253,218,215,178,176,249,205,171,12,121,64,244,106,198,17,112,178,18,225,48,158,224,115,52,141,191,1,83,255,158,205,109,145,142,186,173,38,198,12,92,58,90,138,86,152,183,157,24,5,205,117,150,196,101,78,188,76,231,6,133,131,117]")));
+    const validatorB = new anchor.web3.Account(Buffer.from(JSON.parse("[246,98,101,231,100,151,94,250,203,118,85,25,30,229,168,55,97,68,94,98,82,98,15,76,155,195,126,166,252,86,58,199,65,231,3,5,235,196,223,212,245,16,70,215,191,111,107,47,47,9,103,245,254,229,157,119,248,109,37,208,185,29,173,35]")));
+    const validatorC = new anchor.web3.Account(Buffer.from(JSON.parse("[196,56,248,6,150,48,86,162,236,23,152,118,212,238,143,191,151,91,28,121,163,3,109,6,62,22,163,74,14,99,243,78,52,177,120,238,72,73,247,143,127,86,147,249,152,86,71,91,217,119,156,201,37,127,24,169,32,160,137,71,253,192,149,61]")));
     let campaignAccount;
     let architectToken;
     let builderToken;
     let validatorToken;
     it("Create Campaign by architect", async () => {
-        await provider.connection.requestAirdrop(architect.publicKey, 10000000000);
+        // await provider.connection.requestAirdrop(architect.publicKey, 10000000000);
         const offChainReference = new anchor.BN(1213);// used by offchain system
         const period = new anchor.BN(14);// number of day for staking
         const min_builder = new anchor.BN(5);// minimum builder needed by this campaign
@@ -139,7 +139,7 @@ describe('datafarm', () => {
 
 
     it("Create Campaign by architectB", async () => {
-        await provider.connection.requestAirdrop(architectB.publicKey, 3000000000);
+        // await provider.connection.requestAirdrop(architectB.publicKey, 3000000000);
         const offChainReference = new anchor.BN(1213);
         const period = new anchor.BN(14);
         const min_builder = new anchor.BN(5);
@@ -198,7 +198,7 @@ describe('datafarm', () => {
     }).timeout(90000);
 
     it("Init Stake Account for Builder", async () => {
-        await provider.connection.requestAirdrop(builder.publicKey, 3000000000);
+        // await provider.connection.requestAirdrop(builder.publicKey, 3000000000);
         await sleep(1000);
         let pool = await dataProgram.state.fetch();
         const role = 2 ;// Builder role
@@ -226,7 +226,7 @@ describe('datafarm', () => {
         assert.ok(stake.bump, nonce);
     }).timeout(30000);
     it("builder stake to campaign", async () => {
-        await provider.connection.requestAirdrop(builder.publicKey, 3000000000);
+        // await provider.connection.requestAirdrop(builder.publicKey, 3000000000);
         await sleep(1000);
         let pool = await dataProgram.state.fetch();
         const [pda,bump] = await anchor.web3.PublicKey.findProgramAddress(
@@ -300,7 +300,7 @@ describe('datafarm', () => {
     }).timeout(90000);
 
     it("Init Stake Account for validator", async () => {
-        await provider.connection.requestAirdrop(validator.publicKey, 3000000000);
+        // await provider.connection.requestAirdrop(validator.publicKey, 3000000000);
         await sleep(2000);
         let pool = await dataProgram.state.fetch();
         const role = 3 ;// validator role
@@ -328,7 +328,7 @@ describe('datafarm', () => {
         assert.ok(stake.bump, nonce);
     }).timeout(90000);
     it("Init Stake Account for validatorB", async () => {
-        await provider.connection.requestAirdrop(validatorB.publicKey, 3000000000);
+        // await provider.connection.requestAirdrop(validatorB.publicKey, 3000000000);
         await sleep(2000);
         let pool = await dataProgram.state.fetch();
         const role = 3 ;// validator role
@@ -356,7 +356,7 @@ describe('datafarm', () => {
         assert.ok(stake.bump, nonce);
     }).timeout(90000);
     it("Init Stake Account for validatorC", async () => {
-        await provider.connection.requestAirdrop(validatorC.publicKey, 3000000000);
+        // await provider.connection.requestAirdrop(validatorC.publicKey, 3000000000);
         await sleep(2000);
         let pool = await dataProgram.state.fetch();
         const role = 3 ;// validator role

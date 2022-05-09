@@ -75,3 +75,6 @@ it run test case for deployed smart contract
 ```bash
 mocha tests
 ```
+
+export ANCHOR_PROVIDER_URL=https://api.devnet.solana.com
+export ANCHOR_WALLET=/root/.config/solana/devnet.json
