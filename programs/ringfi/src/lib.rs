@@ -16,7 +16,7 @@ const SMALL: usize = 128;
 const MEDIUM: usize = 256;
 
 #[program]
-pub mod Datafarm {
+pub mod Ringfi {
     use crate::error::FarmError;
     use super::*;
 
@@ -93,7 +93,7 @@ pub mod Datafarm {
             period: u64,
             min_builder: u64,
             min_validator: u64,
-            reward_per_utterance: u64,
+            reward_per_sentence: u64,
             validation_quorum: u64,
             domain: String,
             subject: String,
@@ -103,7 +103,7 @@ pub mod Datafarm {
             let pool = &mut ctx.accounts.pool;
             let campaign = &mut ctx.accounts.CampaignAccount.load_init()?;
             let (pda, _bump_seed) =
-                Pubkey::find_program_address(&[PDA_SEED], ctx.accounts.datafarm.key);
+                Pubkey::find_program_address(&[PDA_SEED], ctx.accounts.ringfi.key);
             if pool.authority != pda {
                 return Err(FarmError::InvalidPDA.into())
             }
@@ -118,7 +118,7 @@ pub mod Datafarm {
             campaign.subject = string_small(subject);
             campaign.explain = string_medium(explain);
             campaign.phrase = string_medium(phrase);
-            campaign.reward_per_utterance = reward_per_utterance;
+            campaign.reward_per_sentence = reward_per_sentence;
             campaign.validation_quorum = validation_quorum;
             campaign.architect = ctx.accounts.architect.key();
             /// later should change to emit
@@ -183,7 +183,7 @@ pub mod Datafarm {
                 camp.stake_status = true;
                 stake.pending_reward +=
                     camp.validation_quorum
-                        .checked_mul(camp.reward_per_utterance).unwrap()
+                        .checked_mul(camp.reward_per_sentence).unwrap()
                         .checked_div(camp.min_validator).unwrap();
                 state.architect_stake.checked_mul(1000_000_000).unwrap()
             },
@@ -286,8 +286,8 @@ pub mod Datafarm {
         }*/
         // calculate reward for architect
         if stake.role == 1 {
-            stake.pending_reward = camp.reward_per_utterance
-                .checked_mul(camp.utterance_approved).unwrap();
+            stake.pending_reward = camp.reward_per_sentence
+                .checked_mul(camp.sentence_approved).unwrap();
         }
         let (_pda, bump_seed) = Pubkey::find_program_address(&[PDA_SEED], ctx.program_id);
         let seeds = &[&PDA_SEED[..], &[bump_seed]];
@@ -299,8 +299,8 @@ pub mod Datafarm {
         stake.rewarded = true;
         Ok(())
     }
-    pub fn submit_utterance(ctx: Context<InitUtteranceAccount>, msg: String) -> ProgramResult {
-        let mut utterance = ctx.accounts.utterance_account.load_init()?;
+    pub fn submit_sentence(ctx: Context<InitSentenceAccount>, msg: String) -> ProgramResult {
+        let mut sentence = ctx.accounts.sentence_account.load_init()?;
         let campaign = &mut ctx.accounts.campaign_account.load_mut()?;
         let stake = &mut ctx.accounts.stake_account.load_mut()?;
         if stake.user_address != ctx.accounts.builder.key() {
@@ -315,22 +315,22 @@ pub mod Datafarm {
         if stake.role != 2  {
             return Err(FarmError::WrongBuilderRole.into());
         }
-        stake.pending_reward = stake.pending_reward.checked_add(campaign.reward_per_utterance ).unwrap();
+        stake.pending_reward = stake.pending_reward.checked_add(campaign.reward_per_sentence ).unwrap();
         let given_msg = msg.as_bytes();
         let mut data = [0u8; 256];
         data[..given_msg.len()].copy_from_slice(given_msg);
-        utterance.data = data ;
-        utterance.finish =false ;
-        utterance.builder = ctx.accounts.builder.key();
-        utterance.campaign = ctx.accounts.campaign_account.key();
+        sentence.data = data ;
+        sentence.finish =false ;
+        sentence.builder = ctx.accounts.builder.key();
+        sentence.campaign = ctx.accounts.campaign_account.key();
         let head = campaign.head.clone() as usize;
-        campaign.utterances[head] = ctx.accounts.utterance_account.key();
+        campaign.sentences[head] = ctx.accounts.sentence_account.key();
         campaign.head +=1;
 
         /// later should change to emit
         msg!(
-            "{{ \"event\" : \"submit_utterance\",\
-            \"utterance_id\" : \"{}\",\
+            "{{ \"event\" : \"submit_sentence\",\
+            \"sentence_id\" : \"{}\",\
             \"builder\" : \"{}\",\
             \"architect\" : \"{}\"\
             }}",
@@ -343,7 +343,7 @@ pub mod Datafarm {
 
 
     pub fn validate(ctx: Context<OnValidator>, status: bool) -> ProgramResult {
-        let utterance = &mut ctx.accounts.utterance_account.load_mut()?;
+        let sentence = &mut ctx.accounts.sentence_account.load_mut()?;
         let campaign = &mut ctx.accounts.campaign_account.load_mut()?;
         let stake = &mut ctx.accounts.stake_account.load_mut()?;
         if stake.user_address != ctx.accounts.validator.key() {
@@ -359,32 +359,32 @@ pub mod Datafarm {
             return Err(FarmError::WrongValidatorRole.into());
         }
         let validator = *ctx.accounts.validator.key;
-        stake.pending_reward = stake.pending_reward.checked_add(campaign.reward_per_utterance ).unwrap();
+        stake.pending_reward = stake.pending_reward.checked_add(campaign.reward_per_sentence ).unwrap();
         match status {
             true => {
-                utterance.correct = utterance
+                sentence.correct = sentence
                     .correct
                     .checked_add(1)
                     .unwrap();
             }
             false => {
-                utterance.incorrect = utterance
+                sentence.incorrect = sentence
                     .incorrect
                     .checked_add(1)
                     .unwrap();
             }
         }
 
-        if utterance.correct >= campaign.min_validator {
-            utterance.finish = true;
-            campaign.utterance_approved += 1;
-            if campaign.utterance_approved >= campaign.validation_quorum  {
+        if sentence.correct >= campaign.min_validator {
+            sentence.finish = true;
+            campaign.sentence_approved += 1;
+            if campaign.sentence_approved >= campaign.validation_quorum  {
                 campaign.finish = true;
             }
 
             msg!(
-                "{{ \"event\" : \"validate_utterance\",\
-            \"utterance_address\" : \"{:?}\",\
+                "{{ \"event\" : \"validate_sentence\",\
+            \"sentence_address\" : \"{:?}\",\
             \"data\" : \"{:?}\",\
             \"campaign_topic\" : \"{:?}\",\
             \"campaign_subject\" : \"{:?}\",\
@@ -394,21 +394,21 @@ pub mod Datafarm {
             \"incorrect\" : \"{:?}\",\
             \"finish\" : \"{:?}\"\
           }}",
-                ctx.accounts.utterance_account.key(),
-                utterance.data,
+                ctx.accounts.sentence_account.key(),
+                sentence.data,
                 campaign.domain,
                 campaign.subject,
                 ctx.accounts.validator.key(),
-                utterance.builder,
-                utterance.correct,
-                utterance.incorrect,
-                utterance.finish
+                sentence.builder,
+                sentence.correct,
+                sentence.incorrect,
+                sentence.finish
             );
         }
-        let uhead = utterance.head as usize;
-        utterance.validators
+        let uhead = sentence.head as usize;
+        sentence.validators
             [uhead] = validator;
-        utterance.head = utterance
+        sentence.head = sentence
             .head
             .checked_add(1)
             .unwrap();

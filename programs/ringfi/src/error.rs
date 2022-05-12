@@ -17,7 +17,7 @@ pub enum FarmError {
     InvalidStakeCampaign,
     #[msg("Token account is not belong to user")]
     InvalidTokenOwner,
-    #[msg("Token account mintis not same as SNS Mint")]
+    #[msg("Token account mintis not same as RING Mint")]
     InvalidTokenMint,
     #[msg("User did not stake to this campaign")]
     InvalidStakeAccount,
@@ -27,8 +27,8 @@ pub enum FarmError {
     UnstakeProhibted,
     #[msg("user can't call redeem reward twice")]
     RewardReedemedBefore,
-    #[msg("only builder can submit utterance")]
+    #[msg("only builder can submit sentence")]
     WrongBuilderRole,
-    #[msg("only validator can validate utterance")]
+    #[msg("only validator can validate sentence")]
     WrongValidatorRole,
 }

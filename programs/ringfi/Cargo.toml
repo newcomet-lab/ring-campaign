@@ -1,12 +1,12 @@
 [package]
-name = "datafarm"
+name = "ringfi"
 version = "0.1.0"
-description = "Created by Seyed Hadi Hosseini im.perlish@gmail.com"
+description = "Created by anchor"
 edition = "2018"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "datafarm"
+name = "ringfi"
 
 [features]
 no-entrypoint = []

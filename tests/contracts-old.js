@@ -2,16 +2,16 @@ const anchor = require('@project-serum/anchor');
 const os = require("os");
 const assert = require("assert");
 const fs = require("fs");
+
+
 const {
     SYSVAR_RENT_PUBKEY,
     PublicKey,
     Keypair,
     SystemProgram,
 } = require("@solana/web3.js");
-const {findAssociatedTokenAddress, getTokenAccountAndAirdrop,hash} = require("./helper");
+const {userCharge, ourCharge, vaultCharge,findAssociatedTokenAddress, hash} = require("./helper");
 const splToken = require('@solana/spl-token');
-const {createTokenAccount, sleep, getTokenAccount} = require("@project-serum/common");
-const {equal} = require("assert");
 const TokenInstructions = require("@project-serum/serum").TokenInstructions;
 
 describe('ringfi', () => {
@@ -24,18 +24,203 @@ describe('ringfi', () => {
 
     const dataProgram = new anchor.Program(data_idl, data_idl.metadata.address, anchor.getProvider());
 
-    const architect = new anchor.web3.Account(Buffer.from(JSON.parse("[67,248,87,21,143,203,213,213,143,135,249,159,70,37,29,242,60,84,134,6,85,12,162,184,128,146,224,98,8,217,229,253,43,238,68,87,96,38,253,37,215,117,44,163,152,180,130,125,134,125,37,50,213,117,112,119,61,188,223,90,11,234,4,74]")));
-    const architectB = new anchor.web3.Account(Buffer.from(JSON.parse("[238,44,213,9,203,44,154,87,151,148,37,224,211,152,14,78,84,218,0,106,129,151,6,138,188,141,106,221,70,195,124,244,70,79,124,28,49,186,13,66,235,220,131,126,42,111,250,196,5,211,100,181,117,76,166,227,212,145,0,239,207,92,161,66]")));
-    const builder = new anchor.web3.Account(Buffer.from(JSON.parse("[79,224,231,254,196,98,204,172,7,92,237,50,18,37,79,84,101,165,9,14,152,252,187,46,17,247,122,105,21,230,54,162,171,207,65,208,112,161,12,207,32,55,104,40,0,188,56,81,93,222,144,35,227,7,110,100,80,92,88,151,44,214,137,138]")));
-    const validator = new anchor.web3.Account(Buffer.from(JSON.parse("[130,222,253,218,215,178,176,249,205,171,12,121,64,244,106,198,17,112,178,18,225,48,158,224,115,52,141,191,1,83,255,158,205,109,145,142,186,173,38,198,12,92,58,90,138,86,152,183,157,24,5,205,117,150,196,101,78,188,76,231,6,133,131,117]")));
-    const validatorB = new anchor.web3.Account(Buffer.from(JSON.parse("[246,98,101,231,100,151,94,250,203,118,85,25,30,229,168,55,97,68,94,98,82,98,15,76,155,195,126,166,252,86,58,199,65,231,3,5,235,196,223,212,245,16,70,215,191,111,107,47,47,9,103,245,254,229,157,119,248,109,37,208,185,29,173,35]")));
-    const validatorC = new anchor.web3.Account(Buffer.from(JSON.parse("[196,56,248,6,150,48,86,162,236,23,152,118,212,238,143,191,151,91,28,121,163,3,109,6,62,22,163,74,14,99,243,78,52,177,120,238,72,73,247,143,127,86,147,249,152,86,71,91,217,119,156,201,37,127,24,169,32,160,137,71,253,192,149,61]")));
-    let campaignAccount;
-    let architectToken;
-    let builderToken;
-    let validatorToken;
+    const tester = new anchor.web3.PublicKey("FGrfSpb4mHxRAsmj8jsPuDibiwkmaL1CcWeHFHyt2cXJ");
+    const tester2 = new anchor.web3.PublicKey("GEVkD15abk9Yvy4zhJaNs5sFJmgD8oaAFASvj9oz6Scn");
+    const tester3 = new anchor.web3.PublicKey("64BDoRi8Cor1iKmKpPuGR9x4hE5sbsohtbiBsbDnzyqy");
+    const tester4 = new anchor.web3.PublicKey("DgBxsrQiXpDT9EYeqUeyWBbrjWEmxwZveygVDziNwxSs");
+    const tester5 = new anchor.web3.PublicKey("8WQL2yB5yw9myW7Xo34sZ7eUTU2oME83BFi6Xa7Wwm1V");
+
+    const tester6 = new anchor.web3.PublicKey("G7SYroD9nMcoHHWAec8miRAzYjAtbGs4G26LtLzd399R");
+    const tester7 = new anchor.web3.PublicKey("5kZprvwGa2FsgpcAjTuowcfTvtEfWP4yt6vr3Vp8KKG8");
+
+    const tester8 = new anchor.web3.PublicKey("FBvHbntEUQHThmsx6uYHfYK4VUu3LqAQGVZMzjW7bPXa");
+    const tester9 = new anchor.web3.PublicKey("BU5vjZeMnNEzA4fmTUvEnzTpkPPjKg48BSJQWqPKYU1s");
+    const tester10 = new anchor.web3.PublicKey("G1PGisf5RxXpbfWDjgiyMZmnDUu1RwaPNY4NddM5rbbT");
+    const tester11 = new anchor.web3.PublicKey("3JsP1Ukg2kE5spZAT1xjPnofCKooM1QfX36mym7V4PQz");
+    const tester12 = new anchor.web3.PublicKey("EwfgEhoojL1fDR7iX1XF28qohvWxK3y5MX1FYJL9A16a");
+    const tester13 = new anchor.web3.PublicKey("GpFdEVNNHEgdUCi1qanrTSTiA8Qog6jjLHMeAAgnhk6L");
+    const tester14 = new anchor.web3.PublicKey("CnzFXVJKHoeBFqfFqjaBgztaoEdqkeNmHhHvsckETEB");
+    const tester15 = new anchor.web3.PublicKey("FRZG1Fjh5MsZWeTKWQvLzGd3WQLNHhD6Dg4WJxaW3p7g");
+    const tester16 = new anchor.web3.PublicKey("J3hMxMJqrDjvT3P4H1mdD3sJpkTAUzo5o72JM1b3nzK5");
+
+    const tester17 = new anchor.web3.PublicKey("8WQL2yB5yw9myW7Xo34sZ7eUTU2oME83BFi6Xa7Wwm1V");
+    const tester18 = new anchor.web3.PublicKey("7UwUhgPerNEfGc8VioLMWr1P5a6x1f5iE3Fj3amptC6Y");
+    const tester19 = new anchor.web3.PublicKey("FGoSVomWnpWCBbnTKRj4PCEpCeCXnAJVVr5Eq7G7zEBw");
+    const tester20 = new anchor.web3.PublicKey("89hvjPpWd7dLAj6hbmqJtZSsi14DDXvsU8hjiQCJvqLD");
+    const tester21 = new anchor.web3.PublicKey("niUnDBkKijY6iGSkADF5bvDeqzecd6arVcec3BfLEBR");
+    const tester22 = new anchor.web3.PublicKey("9yeE9xGcBBzjT2YVvJAXZdWU15QjJt5nCSxrnx4QUxEe");
+    const tester23 = new anchor.web3.PublicKey("DuSQbYGrMsN6QG6T4fcspiFbAf2KVLHDy6gvroz6pFrk");
+    const tester24 = new anchor.web3.PublicKey("5Loz7APEbcBFK1cuUmdQUUzT4ST83Fxtd5qi9twQuyJx");
+    const tester25 = new anchor.web3.PublicKey("C894x8WxrUUfJ38KBvcsWdidZzaQUa8hvxeFNhqPqmUY");
+
+    const tester26 = new anchor.web3.PublicKey("EPnL4QULVj5KbfEpi3HYSagyQczCiwdLWwBNZngK6Apa");
+    const tester27 = new anchor.web3.PublicKey("Co41obBYXEQhDs8z61S8io8y6DTAA3fVWjjCSmbcqsgT");
+    const tester28 = new anchor.web3.PublicKey("35AEKGrVjoFQWEgrA8mCmvqbpfJ8AXn4ukAQ85Rqikin");
+    const tester29 = new anchor.web3.PublicKey("DBnmK5L6Spf5f8o5Mxh4vNk1AJzKwCX8TB3yWHkHd71T");
+    const tester30 = new anchor.web3.PublicKey("5FtKRiMozHk9JNAHABPR2aJVrgYgvwJbUpUMts8E7B5D");
+    const tester31 = new anchor.web3.PublicKey("8pZftMk6mRXob9ZFXRyVGiGVjSi7Xb1uJgQmWnHySAmT");
+    const tester32 = new anchor.web3.PublicKey("DvguvExXBPZtTmdbEuEoqQESeP7JkXUVc3iQNdJYCbQr");
+    const tester33 = new anchor.web3.PublicKey("9MchLxt9gkEQQM4wsSVkWSQL2SsnoS3okEqvEDQAoSSp");
+    const tester34 = new anchor.web3.PublicKey("G8YkxznDHZTcomqhoXuSE4nkdv7GTpaESkWLstnvXeqU");
+
+    const user = os.userInfo().username;
+    const key_path = "/root/.config/solana/id.json";
+    const ks_owner = fs.readFileSync(key_path, {encoding: 'utf8'});
+    const kb_owner = Buffer.from(JSON.parse(ks_owner));
+    let owner = new anchor.web3.Account(kb_owner);
+
+    const admin = anchor.web3.Keypair.generate();
+    const customer = anchor.web3.Keypair.generate();
+    const architect = new anchor.web3.Account(Buffer.from(JSON.parse("[158,210,0,206,240,214,38,48,249,117,33,95,218,111,152,39,138,15,175,187,177,191,45,2,162,3,57,181,211,7,192,44,250,247,4,214,253,14,50,19,210,13,5,79,58,80,102,96,209,16,205,101,174,201,180,248,228,73,216,223,208,16,76,240]")));
+    const architectB = new anchor.web3.Account(Buffer.from(JSON.parse("[81,186,0,2,128,170,244,75,23,169,191,102,124,41,175,83,27,214,72,147,62,141,212,88,211,73,215,227,45,53,211,7,192,127,55,215,171,35,227,173,10,210,137,17,182,60,126,100,184,231,9,56,143,54,12,48,214,191,36,6,139,181,137,144]")));
+    const builder = new anchor.web3.Account(Buffer.from(JSON.parse("[210,41,252,144,113,174,131,112,108,43,222,52,226,15,2,201,27,155,89,123,145,215,181,188,24,102,96,3,14,154,33,78,31,51,70,159,189,138,107,218,32,53,201,129,9,199,181,54,233,106,49,173,233,113,121,176,12,145,180,188,6,180,251,12]")));
+    const validator = new anchor.web3.Account(Buffer.from(JSON.parse("[246,185,215,246,252,94,251,112,228,123,24,55,239,253,60,87,172,21,82,182,220,188,146,146,122,85,135,252,237,25,180,229,45,68,24,94,241,106,72,216,218,57,206,5,214,1,119,115,30,248,83,140,250,22,139,52,91,187,80,22,234,86,96,148]")));
+    const validatorB = new anchor.web3.Account(Buffer.from(JSON.parse("[62,41,81,230,181,182,199,233,165,70,15,53,118,6,41,151,191,33,24,222,62,121,239,144,143,159,243,164,153,201,92,137,33,190,158,50,234,233,148,99,254,33,202,2,18,146,125,13,189,68,221,140,158,113,113,98,217,216,134,18,189,207,255,67]")));
+    const validatorC = new anchor.web3.Account(Buffer.from(JSON.parse("[53,234,205,179,239,152,23,12,238,48,80,238,192,230,78,21,59,164,187,41,102,29,21,26,184,210,32,62,253,121,71,96,126,233,196,129,106,39,197,40,240,83,6,190,191,174,205,116,45,166,6,18,224,70,238,152,185,146,67,153,166,103,177,6]")));
+    const validatorD = anchor.web3.Keypair.generate();
+    const validatorE = anchor.web3.Keypair.generate();
+    const validatorF = anchor.web3.Keypair.generate();
+    const validatorG = anchor.web3.Keypair.generate();
+
+    let architectToken = undefined;
+    let architecBToken = undefined;
+    let builderToken = undefined;
+    let validatorToken = undefined;
+    let validatorBToken = undefined;
+    let validatorCToken = undefined;
+    let mint = undefined;
+    let myAccount = undefined;
+    let pda = undefined;
+    let bump = undefined;
+    let pool_vault = undefined;
+    let campaignAccount = undefined;
+    it("log users", async () => {
+        console.log("\towner: ", owner.publicKey.toBase58());
+        console.log("\tadmin : ", admin.publicKey.toBase58());
+        console.log("\tarchitect : ", architect.publicKey.toBase58());
+        console.log("\tbuilder : ", builder.publicKey.toBase58());
+        console.log("\tvalidator : ", validator.publicKey.toBase58());
+        console.log("\tcustomer : ", customer.publicKey.toBase58());
+        assert.ok(true);
+    }).timeout(90000);
+    it("Airdrop RING token to users", async () => {
+        mint = await splToken.Token.createMint(provider.connection, owner, owner.publicKey, owner.publicKey, 9, splToken.TOKEN_PROGRAM_ID,)
+        console.log('\tRING Token public address: ' + mint.publicKey.toBase58());
+        architectToken = await userCharge(mint, architect, owner);
+        architectBToken = await userCharge(mint, architectB, owner);
+        builderToken = await userCharge(mint, builder, owner);
+        validatorToken = await vaultCharge(mint, validator, owner);
+        validatorBToken = await vaultCharge(mint, validatorB, owner);
+        validatorCToken = await vaultCharge(mint, validatorC, owner);
+        await ourCharge(mint, tester, owner);
+        await ourCharge(mint, tester2, owner);
+        await ourCharge(mint, tester3, owner);
+        await ourCharge(mint, tester4, owner);
+        await ourCharge(mint, tester5, owner);
+
+        await ourCharge(mint, tester6, owner);
+        await ourCharge(mint, tester7, owner);
+
+        await ourCharge(mint, tester8, owner);
+        await ourCharge(mint, tester9, owner);
+        await ourCharge(mint, tester10, owner);
+        await ourCharge(mint, tester11, owner);
+        await ourCharge(mint, tester12, owner);
+        await ourCharge(mint, tester13, owner);
+        await ourCharge(mint, tester14, owner);
+        await ourCharge(mint, tester15, owner);
+        await ourCharge(mint, tester16, owner);
+
+        await ourCharge(mint, tester17, owner);
+        await ourCharge(mint, tester18, owner);
+        await ourCharge(mint, tester19, owner);
+        await ourCharge(mint, tester20, owner);
+        await ourCharge(mint, tester21, owner);
+        await ourCharge(mint, tester22, owner);
+        await ourCharge(mint, tester23, owner);
+        await ourCharge(mint, tester24, owner);
+        await ourCharge(mint, tester25, owner);
+
+        await ourCharge(mint, tester26, owner);
+        await ourCharge(mint, tester27, owner);
+        await ourCharge(mint, tester28, owner);
+        await ourCharge(mint, tester29, owner);
+        await ourCharge(mint, tester30, owner);
+        await ourCharge(mint, tester31, owner);
+        await ourCharge(mint, tester32, owner);
+        await ourCharge(mint, tester33, owner);
+        await ourCharge(mint, tester34, owner);
+
+        const [_pda, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
+            [Buffer.from(anchor.utils.bytes.utf8.encode("Staking"))],
+            dataProgram.programId
+        );
+        pda = _pda;
+        // Mint more token to vault because we going to send reward to users
+        pool_vault = await vaultCharge(mint, owner, owner);
+        console.log("\tarchitect have ", architectToken.amount / 1000000000, " RING");
+        console.log("\tbuilder have ", builderToken.amount / 1000000000, " RING");
+        console.log("\tvalidator have ", validatorToken.amount / 1000000000, " RING");
+        console.log("\tvault is ", pool_vault.address.toBase58());
+        console.log("\tarchitectToken is ", architectToken.address.toBase58());
+        console.log("\tbuilderToken is ", builderToken.address.toBase58());
+        console.log("\tvalidatorToken is ", validatorToken.address.toBase58());
+        assert.ok(architect.publicKey.equals(architectToken.owner));
+        assert.ok(builder.publicKey.equals(builderToken.owner));
+        assert.ok(validator.publicKey.equals(validatorToken.owner));
+        await dataProgram.provider.connection.requestAirdrop(
+            architect.publicKey,
+            anchor.web3.LAMPORTS_PER_SOL,
+        );
+        await dataProgram.provider.connection.requestAirdrop(
+            architectB.publicKey,
+            anchor.web3.LAMPORTS_PER_SOL,
+        );
+        await dataProgram.provider.connection.requestAirdrop(
+            builder.publicKey,
+            anchor.web3.LAMPORTS_PER_SOL,
+        );
+        await dataProgram.provider.connection.requestAirdrop(
+            validator.publicKey,
+            anchor.web3.LAMPORTS_PER_SOL,
+        );
+        await dataProgram.provider.connection.requestAirdrop(
+            validatorB.publicKey,
+            anchor.web3.LAMPORTS_PER_SOL,
+        );
+        await dataProgram.provider.connection.requestAirdrop(
+            validatorC.publicKey,
+            anchor.web3.LAMPORTS_PER_SOL,
+        );
+
+    }).timeout(90000);
+    it("Creates State Pool", async () => {
+        const architect_stake = new anchor.BN(20);
+        const builder_stake = new anchor.BN(20);
+        const validator_stake = new anchor.BN(20);
+        const reward_apy = 10;
+        const reward_per_block = new anchor.BN(3);
+        const pool_cap = new anchor.BN(250000000);
+        const penalty = new anchor.BN(2);
+        await dataProgram.state.rpc.new(
+            architect_stake, builder_stake, validator_stake,
+            reward_apy, pool_cap, penalty, reward_per_block,
+            {
+                accounts: {
+                    authority: owner.publicKey,
+                    mint: mint.publicKey,
+                    vault: pool_vault.address,
+                    stakingProgram: dataProgram.programId,
+                    tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
+                },
+                signers: [owner]
+            });
+        let pool = await dataProgram.state.fetch();
+        const change_vault = await mint.getAccountInfo(pool.vault);
+        assert.ok(change_vault.owner, pda);
+    }).timeout(90000);
+
     it("Create Campaign by architect", async () => {
-        // await provider.connection.requestAirdrop(architect.publicKey, 10000000000);
         const offChainReference = new anchor.BN(1213);// used by offchain system
         const period = new anchor.BN(14);// number of day for staking
         const min_builder = new anchor.BN(5);// minimum builder needed by this campaign
@@ -46,8 +231,7 @@ describe('ringfi', () => {
         const topic_subject = "new subject";
         const topic_explain = "here is my explain";
         const seed_phrase = "write sentence about solana";
-        campaignAccount = anchor.web3.Keypair.generate();
-
+         campaignAccount = anchor.web3.Keypair.generate();
         await dataProgram.state.rpc.createCampaign(
             offChainReference,
             period,
@@ -76,7 +260,7 @@ describe('ringfi', () => {
         const campaign = await dataProgram.account.campaignAccount.fetch(campaignAccount.publicKey);
         console.log("\tcampaign address ", campaignAccount.publicKey.toBase58());
         assert.ok(campaign.minBuilder.eq(min_builder));
-    }).timeout(30000);
+    }).timeout(20000);
     it("Init stake Account for Architect", async () => {
         const role = 1 ;// architect role
         const [stakeAccount, nonce] = await PublicKey.findProgramAddress(
@@ -100,14 +284,9 @@ describe('ringfi', () => {
         const stake = await dataProgram.account.stakeAccount.fetch(stakeAccount);
         assert.ok(stake.userAddress, architect.publicKey);
         assert.ok(stake.role, role);
-    }).timeout(30000);
+    });
    it("Architect stake to campaign", async () => {
        let pool = await dataProgram.state.fetch();
-       const [pda,bump] = await anchor.web3.PublicKey.findProgramAddress(
-           [Buffer.from(anchor.utils.bytes.utf8.encode("Staking"))],
-           dataProgram.programId
-       );
-       architectToken = await getTokenAccountAndAirdrop(provider,dataProgram,pda, pool.mint, architect.publicKey);
        const [stakeAccount, nonce] = await PublicKey.findProgramAddress(
            [
                architect.publicKey.toBuffer(),
@@ -116,16 +295,20 @@ describe('ringfi', () => {
            ],
            dataProgram.programId
        );
+       const userToken = await findAssociatedTokenAddress(
+           architect.publicKey,
+           pool.mint
+       );
         await dataProgram.rpc.stake(
             {
                 accounts: {
                     stakeAccount: stakeAccount,
                     user: architect.publicKey,
-                    userToken: architectToken,
+                    userToken: userToken,
                     cpiState: dataProgram.state.address(),
                     ringfi: dataProgram.programId,
                     campaign: campaignAccount.publicKey,
-                    poolVault: pool.vault,
+                    poolVault: pool_vault.address,
                     tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
                     clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
                 },
@@ -135,11 +318,10 @@ describe('ringfi', () => {
         const campaign = await dataProgram.account.campaignAccount.fetch(campaignAccount.publicKey);
         assert.ok(stake.status, true)
         assert.ok(campaign.stakeStatus, true)
-    }).timeout(90000);
+    }).timeout(20000);
 
 
     it("Create Campaign by architectB", async () => {
-        // await provider.connection.requestAirdrop(architectB.publicKey, 3000000000);
         const offChainReference = new anchor.BN(1213);
         const period = new anchor.BN(14);
         const min_builder = new anchor.BN(5);
@@ -198,8 +380,6 @@ describe('ringfi', () => {
     }).timeout(90000);
 
     it("Init Stake Account for Builder", async () => {
-        // await provider.connection.requestAirdrop(builder.publicKey, 3000000000);
-        await sleep(1000);
         let pool = await dataProgram.state.fetch();
         const role = 2 ;// Builder role
         const [stakeAccount, nonce] = await PublicKey.findProgramAddress(
@@ -224,16 +404,9 @@ describe('ringfi', () => {
         assert.ok(stake.userAddress, builder.publicKey);
         assert.ok(stake.role, role);
         assert.ok(stake.bump, nonce);
-    }).timeout(30000);
+    });
     it("builder stake to campaign", async () => {
-        // await provider.connection.requestAirdrop(builder.publicKey, 3000000000);
-        await sleep(1000);
         let pool = await dataProgram.state.fetch();
-        const [pda,bump] = await anchor.web3.PublicKey.findProgramAddress(
-            [Buffer.from(anchor.utils.bytes.utf8.encode("Staking"))],
-            dataProgram.programId
-        );
-        builderToken =await getTokenAccountAndAirdrop(provider,dataProgram,pda, pool.mint, builder.publicKey);
         const [stakeAccount, nonce] = await PublicKey.findProgramAddress(
             [
                 builder.publicKey.toBuffer(),
@@ -242,12 +415,16 @@ describe('ringfi', () => {
             ],
             dataProgram.programId
         );
+        const userToken = await findAssociatedTokenAddress(
+            builder.publicKey,
+            pool.mint
+        );
         await dataProgram.rpc.stake(
             {
                 accounts: {
                     stakeAccount: stakeAccount,
                     user: builder.publicKey,
-                    userToken: builderToken,
+                    userToken: userToken,
                     cpiState: dataProgram.state.address(),
                     ringfi: dataProgram.programId,
                     campaign: pool.campaigns[0],// selected campaign
@@ -259,7 +436,7 @@ describe('ringfi', () => {
             });
         const stake = await dataProgram.account.stakeAccount.fetch(stakeAccount);
         assert.ok(stake.status, true);
-    }).timeout(30000);
+    }).timeout(20000);
 
     it("Submit 3 Sentence to an ontology", async () => {
         let sentence = "test sentence number ";
@@ -295,13 +472,23 @@ describe('ringfi', () => {
         }
 
         const campaignData = await dataProgram.account.campaignAccount.fetch(pool.campaigns[0]);
+/*        const campaignAddr = await dataProgram.account.campaignAccount.associatedAddress(pool.campaigns[0]);
+        console.log("\t", campaignData.head.toString(), " sentences submited to campaign : ", campaignAddr.toBase58());
+        let sentence = new TextDecoder("utf-8").decode(new Uint8Array(campaignData.sentences[0].data));
+        for (j = 0; j < campaignData.head; j++) {
+            let test = new TextDecoder("utf-8").decode(new Uint8Array(campaignData.sentences[j].data));
+            console.log("\tsentence : ", test,
+                " submitted by ", campaignData.sentences[j].builder.toBase58(),
+                "\n\tvalidation correct :", campaignData.sentences[j].correct.toNumber(),
+                "\n\tvalidation incorrect :", campaignData.sentences[j].incorrect.toNumber(),
+                "\n\t and validation status :", campaignData.sentences[j].finish
+            );
+        }*/
         console.log("\thead is ", campaignData.head.toNumber());
         //assert.ok(campaignData.head.toNumber() === 6);
     }).timeout(90000);
 
     it("Init Stake Account for validator", async () => {
-        // await provider.connection.requestAirdrop(validator.publicKey, 3000000000);
-        await sleep(2000);
         let pool = await dataProgram.state.fetch();
         const role = 3 ;// validator role
         const [stakeAccount, nonce] = await PublicKey.findProgramAddress(
@@ -326,10 +513,8 @@ describe('ringfi', () => {
         assert.ok(stake.userAddress, builder.publicKey);
         assert.ok(stake.role, role);
         assert.ok(stake.bump, nonce);
-    }).timeout(90000);
+    });
     it("Init Stake Account for validatorB", async () => {
-        // await provider.connection.requestAirdrop(validatorB.publicKey, 3000000000);
-        await sleep(2000);
         let pool = await dataProgram.state.fetch();
         const role = 3 ;// validator role
         const [stakeAccount, nonce] = await PublicKey.findProgramAddress(
@@ -354,10 +539,8 @@ describe('ringfi', () => {
         assert.ok(stake.userAddress, builder.publicKey);
         assert.ok(stake.role, role);
         assert.ok(stake.bump, nonce);
-    }).timeout(90000);
+    });
     it("Init Stake Account for validatorC", async () => {
-        // await provider.connection.requestAirdrop(validatorC.publicKey, 3000000000);
-        await sleep(2000);
         let pool = await dataProgram.state.fetch();
         const role = 3 ;// validator role
         const [stakeAccount, nonce] = await PublicKey.findProgramAddress(
@@ -382,7 +565,7 @@ describe('ringfi', () => {
         assert.ok(stake.userAddress, builder.publicKey);
         assert.ok(stake.role, role);
         assert.ok(stake.bump, nonce);
-    }).timeout(90000);
+    });
     it("validator stake to campaign", async () => {
         let pool = await dataProgram.state.fetch();
         const [stakeAccount, nonce] = await PublicKey.findProgramAddress(
@@ -393,17 +576,16 @@ describe('ringfi', () => {
             ],
             dataProgram.programId
         );
-        const [pda,bump] = await anchor.web3.PublicKey.findProgramAddress(
-            [Buffer.from(anchor.utils.bytes.utf8.encode("Staking"))],
-            dataProgram.programId
+        const userToken = await findAssociatedTokenAddress(
+            validator.publicKey,
+            pool.mint
         );
-        validatorToken =await getTokenAccountAndAirdrop(provider,dataProgram,pda, pool.mint, validator.publicKey);
         await dataProgram.rpc.stake(
             {
                 accounts: {
                     stakeAccount: stakeAccount,
                     user: validator.publicKey,
-                    userToken: validatorToken,
+                    userToken: userToken,
                     cpiState: dataProgram.state.address(),
                     ringfi: dataProgram.programId,
                     campaign: pool.campaigns[0],// selected campaign
@@ -427,11 +609,10 @@ describe('ringfi', () => {
             ],
             dataProgram.programId
         );
-        const [pda,bump] = await anchor.web3.PublicKey.findProgramAddress(
-            [Buffer.from(anchor.utils.bytes.utf8.encode("Staking"))],
-            dataProgram.programId
+        const userToken = await findAssociatedTokenAddress(
+            validatorB.publicKey,
+            pool.mint
         );
-        const userToken =await getTokenAccountAndAirdrop(provider,dataProgram,pda, pool.mint, validatorB.publicKey);
         await dataProgram.rpc.stake(
             {
                 accounts: {
@@ -461,11 +642,10 @@ describe('ringfi', () => {
             ],
             dataProgram.programId
         );
-        const [pda,bump] = await anchor.web3.PublicKey.findProgramAddress(
-            [Buffer.from(anchor.utils.bytes.utf8.encode("Staking"))],
-            dataProgram.programId
+        const userToken = await findAssociatedTokenAddress(
+            validatorC.publicKey,
+            pool.mint
         );
-        const userToken =await getTokenAccountAndAirdrop(provider,dataProgram,pda, pool.mint, validatorC.publicKey);
         await dataProgram.rpc.stake(
             {
                 accounts: {
@@ -683,18 +863,17 @@ describe('ringfi', () => {
             ],
             dataProgram.programId
         );
-        const [pda,bump] = await anchor.web3.PublicKey.findProgramAddress(
-            [Buffer.from(anchor.utils.bytes.utf8.encode("Staking"))],
-            dataProgram.programId
+        const userToken = await findAssociatedTokenAddress(
+            architect.publicKey,
+            pool.mint
         );
-
         await dataProgram.rpc.redeemReward(
             {
                 accounts: {
-                    stakeAccount,
+                    stakeAccount: stakeAccount,
                     user: architect.publicKey,
                     systemProgram: anchor.web3.SystemProgram.programId,
-                    userToken :architectToken,
+                    userToken: userToken,
                     cpiState: dataProgram.state.address(),
                     ringfi: dataProgram.programId,
                     pdaAccount: pda,
@@ -704,10 +883,9 @@ describe('ringfi', () => {
                     tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
                     clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
                 },
-                signers:[architect]
             });
         const stake = await dataProgram.account.stakeAccount.fetch(stakeAccount);
-    }).timeout(50000);
+    }).timeout(20000);
     it("Validator Claim reward", async () => {
         let pool = await dataProgram.state.fetch();
         const [stakeAccount, nonce] = await PublicKey.findProgramAddress(
@@ -722,27 +900,22 @@ describe('ringfi', () => {
             validator.publicKey,
             pool.mint
         );
-        const [pda,bump] = await anchor.web3.PublicKey.findProgramAddress(
-            [Buffer.from(anchor.utils.bytes.utf8.encode("Staking"))],
-            dataProgram.programId
-        );
         await dataProgram.rpc.redeemReward(
             {
                 accounts: {
                     stakeAccount: stakeAccount,
                     user: validator.publicKey,
                     systemProgram: anchor.web3.SystemProgram.programId,
-                    userToken: validatorToken,
+                    userToken: userToken,
                     cpiState: dataProgram.state.address(),
                     ringfi: dataProgram.programId,
                     pdaAccount: pda,
-                    campaign: pool.campaigns[0],
+                    campaign: campaignAccount.publicKey,
                     poolVault: pool.vault,
                     tokenMint: pool.mint,
                     tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
                     clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
                 },
-                signers:[validator]
             });
         const stake = await dataProgram.account.stakeAccount.fetch(stakeAccount);
     }).timeout(20000);
@@ -756,9 +929,9 @@ describe('ringfi', () => {
             ],
             dataProgram.programId
         );
-        let [pda,bump] = await anchor.web3.PublicKey.findProgramAddress(
-            [Buffer.from(anchor.utils.bytes.utf8.encode("Staking"))],
-            dataProgram.programId
+        const userToken = await findAssociatedTokenAddress(
+            architect.publicKey,
+            pool.mint
         );
         await dataProgram.rpc.unstake(
             {
@@ -766,7 +939,7 @@ describe('ringfi', () => {
                     stakeAccount: stakeAccount,
                     user: architect.publicKey,
                     systemProgram: anchor.web3.SystemProgram.programId,
-                    userToken: architectToken,
+                    userToken: userToken,
                     cpiState: dataProgram.state.address(),
                     ringfi: dataProgram.programId,
                     pdaAccount: pda,
@@ -776,7 +949,6 @@ describe('ringfi', () => {
                     tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
                     clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
                 },
-                signers:[architect]
             });
         const stake = await dataProgram.account.stakeAccount.fetch(stakeAccount);
 
@@ -787,70 +959,25 @@ describe('ringfi', () => {
         console.log("\tnumber of campaign ", pool.head.toNumber());
     }).timeout(90000);
     it("Get associated token account", async () => {
-        const pool = await dataProgram.state.fetch();
-        const tokenAccount = await findAssociatedTokenAddress(
-            architect.publicKey,
-            pool.mint
-        );
-        console.log("\tAssociated accout for architect is", tokenAccount.toBase58())
+        const tokenAccount = await mint.getOrCreateAssociatedAccountInfo(architect.publicKey);
+        console.log("\tAssociated accout for architect is", tokenAccount.address.toBase58())
+        assert.ok(tokenAccount.owner, architect.publicKey);
     }).timeout(90000);
 
     it("Airdrop From Smart Contract", async () => {
         const pool = await dataProgram.state.fetch();
         const newTester= anchor.web3.Keypair.generate();
-        const [pda,bump] = await anchor.web3.PublicKey.findProgramAddress(
-            [Buffer.from(anchor.utils.bytes.utf8.encode("Staking"))],
-            dataProgram.programId
-        );
-        const tokenAccount =await getTokenAccountAndAirdrop(provider,dataProgram,pda, pool.mint, newTester.publicKey);
+        const tokenAccount = await mint.getOrCreateAssociatedAccountInfo(newTester.publicKey);
         await dataProgram.rpc.airdrop(
             {
                 accounts: {
-                    userToken :tokenAccount,
+                    userToken :tokenAccount.address,
                     pdaAccount :pda,
                     tokenMint: pool.mint,
                     tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
                     clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
                 },
             });
-    }).timeout(90000);
-
-    it("Freeze account From Smart Contract", async () => {
-        const pool = await dataProgram.state.fetch();
-        const newTester= anchor.web3.Keypair.generate();
-        const tokenAccount = await createTokenAccount(anchor.getProvider(),pool.mint,newTester.publicKey);
-        const [pda,bump] = await anchor.web3.PublicKey.findProgramAddress(
-            [Buffer.from(anchor.utils.bytes.utf8.encode("Staking"))],
-            dataProgram.programId
-        );
-        const userToken =await getTokenAccountAndAirdrop(provider,dataProgram,pda, pool.mint, architect.publicKey);
-        await dataProgram.rpc.freeze(
-            {
-                accounts: {
-                    userToken :userToken,
-                    pdaAccount :pda,
-                    tokenMint: pool.mint,
-                    tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
-                    clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
-                },
-            });
-        await sleep(500);
-        const UserTokenData = await  getTokenAccount(provider,userToken);
-        assert.ok(UserTokenData.isFrozen, true);
-        await dataProgram.rpc.thaw(
-            {
-                accounts: {
-                    userToken :userToken,
-                    pdaAccount :pda,
-                    tokenMint: pool.mint,
-                    tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
-                    clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
-                },
-            });
-        await sleep(500);
-        const checkUserTokenData = await  getTokenAccount(provider,userToken);
-        assert.equal(checkUserTokenData.isFrozen,false);
-    }).timeout(90000);
-
+    });
 });
 

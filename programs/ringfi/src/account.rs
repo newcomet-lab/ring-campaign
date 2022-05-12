@@ -30,11 +30,11 @@ pub struct CampaignAccount {
     pub stake_status: bool,
     pub min_builder: u64,
     pub min_validator: u64,
-    pub reward_per_utterance: u64,
+    pub reward_per_sentence: u64,
     pub validation_quorum: u64,
     pub reward_token: Pubkey,
-    pub utterances: [Pubkey; 100],
-    pub utterance_approved: u64,
+    pub sentences: [Pubkey; 100],
+    pub sentence_approved: u64,
     pub finish: bool,
     pub time_limit: u64,
     pub init_limit: u64,
@@ -56,11 +56,11 @@ impl Default for CampaignAccount {
             stake_status: false,
             min_builder: 0,
             min_validator: 0,
-            reward_per_utterance: 0,
+            reward_per_sentence: 0,
             validation_quorum: 0,
             reward_token: Pubkey::default(),
-            utterances: [Pubkey::default(); 100],
-            utterance_approved: 0,
+            sentences: [Pubkey::default(); 100],
+            sentence_approved: 0,
             time_limit: 0,
             init_limit: 0,
             domain: [0; 128],
@@ -85,7 +85,7 @@ fn check_campaign(campaign_account: &Loader<CampaignAccount>) -> ProgramResult {
 
 #[account(zero_copy)]
 #[derive(Debug)]
-pub struct UtteranceAccount {
+pub struct SentenceAccount {
     pub campaign: Pubkey,
     pub builder: Pubkey,
     pub head: u64,
@@ -97,9 +97,9 @@ pub struct UtteranceAccount {
     pub bump: u8,
 }
 
-impl Default for UtteranceAccount {
+impl Default for SentenceAccount {
     fn default() -> Self {
-        UtteranceAccount {
+        SentenceAccount {
             campaign: Pubkey::default(),
             builder: Pubkey::default(),
             head: 0,

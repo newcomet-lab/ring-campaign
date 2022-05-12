@@ -13,12 +13,12 @@ const splToken = require('@solana/spl-token');
 const {createTokenAccount, sleep} = require("@project-serum/common");
 const TokenInstructions = require("@project-serum/serum").TokenInstructions;
 
-describe('Initialize Data Yield Farm', () => {
+describe('Initialize Ring Finance', () => {
     anchor.setProvider(anchor.Provider.env());
     const provider = anchor.getProvider();
     const data_idl = JSON.parse(
         require('fs')
-            .readFileSync('target/idl/Datafarm.json', 'utf8')
+            .readFileSync('target/idl/Ringfi.json', 'utf8')
             .toString())
 
     const program = new anchor.Program(data_idl, data_idl.metadata.address, anchor.getProvider());
@@ -27,9 +27,9 @@ describe('Initialize Data Yield Farm', () => {
     let admin = new anchor.web3.Account(kb_pool);
     let mint;
 
-    it("Create SNS token for test", async () => {
+    it("Create RING token for test", async () => {
         mint = await splToken.Token.createMint(provider.connection, admin, admin.publicKey, admin.publicKey, 9, splToken.TOKEN_PROGRAM_ID);
-        console.log('\ttest SNS Token address: ' + mint.publicKey.toBase58());
+        console.log('\ttest RING Token address: ' + mint.publicKey.toBase58());
     }).timeout(190000);
 
     it("Initialize Pool", async () => {

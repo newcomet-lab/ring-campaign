@@ -1,5 +1,5 @@
 use crate::account::*;
-use crate::Datafarm::PoolConfig;
+use crate::Ringfi::PoolConfig;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::token::{self, Burn, Mint, MintTo, SetAuthority, TokenAccount, Transfer, ID, FreezeAccount, ThawAccount};
@@ -25,9 +25,9 @@ pub struct InitStakeAccount<'info> {
 }
 
 #[derive(Accounts)]
-pub struct InitUtteranceAccount<'info> {
+pub struct InitSentenceAccount<'info> {
     #[account(zero)]
-    pub(crate) utterance_account: Loader<'info, UtteranceAccount>,
+    pub(crate) sentence_account: Loader<'info, SentenceAccount>,
     #[account(mut, signer)]
     pub builder: AccountInfo<'info>,
     #[account(mut)]
@@ -48,10 +48,10 @@ pub struct Stake<'info> {
     constraint = user_token.owner == *user.key
     )]
     pub(crate) user_token: CpiAccount<'info, TokenAccount>,
-    #[account(mut, state = datafarm)]
+    #[account(mut, state = ringfi)]
     pub cpi_state: CpiState<'info, PoolConfig>,
     #[account(executable)]
-    pub datafarm: AccountInfo<'info>,
+    pub ringfi: AccountInfo<'info>,
     #[account(mut)]
     pub campaign: Loader<'info, CampaignAccount>,
     #[account(mut)]
@@ -158,10 +158,10 @@ pub struct CreateCampaign<'info> {
     pub(crate) CampaignAccount: Loader<'info, CampaignAccount>,
     #[account(signer)]
     pub architect: AccountInfo<'info>,
-    #[account(mut, state = datafarm)]
+    #[account(mut, state = ringfi)]
     pub pool: CpiState<'info, PoolConfig>,
     #[account(executable)]
-    pub datafarm: AccountInfo<'info>,
+    pub ringfi: AccountInfo<'info>,
     #[account("token_program.key == &token::ID")]
     token_program: AccountInfo<'info>,
 }
@@ -179,10 +179,10 @@ pub struct StakeCampaign<'info> {
 pub struct OnBuilder<'info> {
     #[account(signer)]
     pub builder: AccountInfo<'info>,
-    #[account(mut, state = datafarm)]
+    #[account(mut, state = ringfi)]
     pub pool: CpiState<'info, PoolConfig>,
     #[account(executable)]
-    pub datafarm: AccountInfo<'info>,
+    pub ringfi: AccountInfo<'info>,
     #[account(mut)]
     pub campaign_account:  Loader<'info, CampaignAccount>,
     pub stake_account: Loader<'info, stakeAccount>,
@@ -193,7 +193,7 @@ pub struct OnValidator<'info> {
     #[account(signer)]
     pub validator: AccountInfo<'info>,
     #[account(mut)]
-    pub utterance_account: Loader<'info, UtteranceAccount>,
+    pub sentence_account: Loader<'info, SentenceAccount>,
     #[account(mut)]
     pub campaign_account: Loader<'info, CampaignAccount>,
     #[account(mut)]
@@ -235,12 +235,12 @@ pub struct CloseStake<'info> {
     #[account(mut)]
     token_mint: CpiAccount<'info, Mint>,
     pda_account: AccountInfo<'info>,
-    #[account(mut, state = datafarm)]
+    #[account(mut, state = ringfi)]
     pub(crate) cpi_state: CpiState<'info, PoolConfig>,
     #[account(mut)]
     pub campaign: Loader<'info, CampaignAccount>,
     #[account(executable)]
-    datafarm: AccountInfo<'info>,
+    ringfi: AccountInfo<'info>,
     system_program: AccountInfo<'info>,
     token_program: AccountInfo<'info>,
     pub(crate) clock: Sysvar<'info, Clock>,
@@ -259,12 +259,12 @@ pub struct RedeemReward<'info> {
     #[account(mut)]
     token_mint: CpiAccount<'info, Mint>,
     pda_account: AccountInfo<'info>,
-    #[account(mut, state = datafarm)]
+    #[account(mut, state = ringfi)]
     pub(crate) cpi_state: CpiState<'info, PoolConfig>,
     #[account(mut)]
     pub campaign: Loader<'info, CampaignAccount>,
     #[account(executable)]
-    datafarm: AccountInfo<'info>,
+    ringfi: AccountInfo<'info>,
     system_program: AccountInfo<'info>,
     token_program: AccountInfo<'info>,
     pub(crate) clock: Sysvar<'info, Clock>,
